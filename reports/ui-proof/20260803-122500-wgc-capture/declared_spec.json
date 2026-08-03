@@ -1,0 +1,18 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "surface": "Remote Play capture settings",
+  "requiredStates": {
+    "ready": ["matching candidate count", "Capture Remote Play", "Capture READY"],
+    "active": ["Capture REAL", "non-zero frame count", "resolution", "Stop capture"],
+    "stopped": ["Capture STOPPED", "Last capture frames", "Capture Remote Play"]
+  },
+  "alwaysVisibleBoundaries": [
+    "Process audio unavailable",
+    "Program composition unavailable"
+  ],
+  "forbiddenClaims": [
+    "Official Sony client proven",
+    "PS5 connected",
+    "Program source ready"
+  ]
+}

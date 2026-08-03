@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { parseMediaHostProbe } from "../src/core/media-host";
+import { parseMediaHostCapture, parseMediaHostProbe } from "../src/core/media-host";
 
 function probe(candidateCount = 0) {
   return JSON.stringify({
     schema: "pulsecast.media-host-probe/v1",
     adapter: "MediaHostProcessAdapter/v1",
-    version: "0.1.0",
+    version: "0.2.0",
     proofType: "real",
     processId: 100,
     capabilities: [
       { id: "window-discovery", proofType: "real", state: "ready" },
-      { id: "window-capture", proofType: "unavailable", state: "unavailable" },
+      { id: "window-capture", proofType: "real", state: "ready" },
       { id: "process-audio", proofType: "unavailable", state: "unavailable" },
       { id: "program-composition", proofType: "unavailable", state: "unavailable" },
     ],
@@ -31,17 +31,28 @@ function probe(candidateCount = 0) {
             },
           ]
         : [],
+    capture: {
+      schema: "pulsecast.media-host-capture/v1",
+      proofType: "unavailable",
+      state: "idle",
+      windowId: null,
+      frameCount: 0,
+      width: 0,
+      height: 0,
+      lastFrameMonotonicMs: 0,
+      error: null,
+    },
   });
 }
 
 describe("Media Host process contract", () => {
-  it("accepts a real discovery probe while capture remains unavailable", () => {
+  it("accepts real discovery and Windows Graphics Capture availability", () => {
     const parsed = parseMediaHostProbe(probe());
     expect(parsed.remotePlay.state).toBe("not-detected");
     expect(parsed.capabilities).toContainEqual({
       id: "window-capture",
-      proofType: "unavailable",
-      state: "unavailable",
+      proofType: "real",
+      state: "ready",
     });
   });
 
@@ -58,15 +69,33 @@ describe("Media Host process contract", () => {
     expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow("candidate count");
   });
 
-  it("rejects a false real label for unavailable capture", () => {
+  it("rejects an unavailable label for the implemented capture adapter", () => {
     const invalid = JSON.parse(probe()) as {
       capabilities: Array<{ id: string; proofType: string; state: string }>;
     };
     invalid.capabilities[1] = {
       id: "window-capture",
-      proofType: "real",
+      proofType: "unavailable",
       state: "unavailable",
     };
     expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow("invalid proof label");
+  });
+
+  it("requires a real frame before capture becomes active", () => {
+    expect(() =>
+      parseMediaHostCapture(
+        JSON.stringify({
+          schema: "pulsecast.media-host-capture/v1",
+          proofType: "unavailable",
+          state: "active",
+          windowId: "0x1234",
+          frameCount: 0,
+          width: 1280,
+          height: 720,
+          lastFrameMonotonicMs: 0,
+          error: null,
+        }),
+      ),
+    ).toThrow("without a real frame");
   });
 });

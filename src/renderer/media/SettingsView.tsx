@@ -1,5 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { getBridge } from "../bridge";
-import type { AdapterStatus } from "../../shared/contracts";
+import type { AdapterStatus, MediaHostProbe } from "../../shared/contracts";
 import { formatDb, type UseMediaDevicesReturn } from "./useMediaDevices";
 
 const bridge = getBridge();
@@ -11,6 +12,79 @@ interface SettingsViewProps {
 
 export function SettingsView({ media, adapters }: SettingsViewProps) {
   const mediaHost = adapters.find((adapter) => adapter.id === "media-host");
+  const [mediaHostProbe, setMediaHostProbe] = useState<MediaHostProbe | null>(null);
+  const [selectedWindowId, setSelectedWindowId] = useState("");
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [captureError, setCaptureError] = useState("");
+
+  useEffect(() => {
+    if (!media.electron) return;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const probe = await bridge.getMediaHostProbe();
+        if (disposed) return;
+        setMediaHostProbe(probe);
+        setSelectedWindowId((current) => current || probe.candidates[0]?.windowId || "");
+      } catch (error) {
+        if (!disposed) {
+          setCaptureError(error instanceof Error ? error.message : "Media Host probe failed.");
+        }
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 1_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [media.electron]);
+
+  const selectedCandidate = useMemo(
+    () => mediaHostProbe?.candidates.find((candidate) => candidate.windowId === selectedWindowId),
+    [mediaHostProbe, selectedWindowId],
+  );
+  const capture = mediaHostProbe?.capture;
+  const captureLabel =
+    capture?.state === "active" && capture.proofType === "real"
+      ? "REAL"
+      : capture?.state === "starting"
+        ? "STARTING"
+        : capture?.state === "stalled"
+          ? "STALLED"
+          : capture?.state === "failed"
+            ? "FAILED"
+            : capture?.state === "stopped"
+              ? "STOPPED"
+              : "READY";
+
+  const startCapture = async () => {
+    if (!selectedWindowId) return;
+    setCaptureBusy(true);
+    setCaptureError("");
+    try {
+      await bridge.startMediaHostCapture(selectedWindowId);
+      setMediaHostProbe(await bridge.getMediaHostProbe());
+    } catch (error) {
+      setCaptureError(error instanceof Error ? error.message : "Window capture failed.");
+    } finally {
+      setCaptureBusy(false);
+    }
+  };
+
+  const stopCapture = async () => {
+    setCaptureBusy(true);
+    setCaptureError("");
+    try {
+      await bridge.stopMediaHostCapture();
+      setMediaHostProbe(await bridge.getMediaHostProbe());
+    } catch (error) {
+      setCaptureError(error instanceof Error ? error.message : "Window capture did not stop.");
+    } finally {
+      setCaptureBusy(false);
+    }
+  };
+
   return (
     <section className="settings-view">
       <div className="settings-column">
@@ -18,8 +92,28 @@ export function SettingsView({ media, adapters }: SettingsViewProps) {
           <span className="panel-label">PLAYSTATION SOURCE</span>
           <h2>Official PS Remote Play</h2>
           <p className="media-copy">
-            {mediaHost?.detail ?? "Native Media Host discovery has not completed yet."}
+            {mediaHostProbe
+              ? mediaHostProbe.candidates.length > 0
+                ? `${mediaHostProbe.candidates.length} matching PS Remote Play window candidate(s) detected.`
+                : "Real Windows discovery and capture are ready; no PS Remote Play window is currently detected."
+              : (mediaHost?.detail ?? "Native Media Host discovery has not completed yet.")}
           </p>
+          {mediaHostProbe && mediaHostProbe.candidates.length > 0 && (
+            <label className="device-select">
+              <span>Select Remote Play window</span>
+              <select
+                value={selectedWindowId}
+                disabled={captureBusy || capture?.state === "active"}
+                onChange={(event) => setSelectedWindowId(event.target.value)}
+              >
+                {mediaHostProbe.candidates.map((candidate) => (
+                  <option key={candidate.windowId} value={candidate.windowId}>
+                    {candidate.title} · {candidate.bounds.width} × {candidate.bounds.height}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="stream-health stream-health--routes">
             <div>
               <span>Discovery</span>
@@ -27,9 +121,58 @@ export function SettingsView({ media, adapters }: SettingsViewProps) {
             </div>
             <div>
               <span>Capture</span>
-              <strong>UNAVAILABLE</strong>
+              <strong>{captureLabel}</strong>
             </div>
           </div>
+          {capture?.proofType === "real" && (
+            <div className="proof-result is-pass">
+              <div>
+                <span>{capture.state === "active" ? "Frames" : "Last capture frames"}</span>
+                <strong>{capture.frameCount}</strong>
+              </div>
+              <div>
+                <span>Resolution</span>
+                <strong>
+                  {capture.width} × {capture.height}
+                </strong>
+              </div>
+              <div>
+                <span>{capture.state === "active" ? "Source" : "Last source"}</span>
+                <strong>{selectedCandidate?.executableName || "Remote Play"}</strong>
+              </div>
+            </div>
+          )}
+          <div className="settings-actions">
+            {capture?.state === "active" || capture?.state === "stalled" ? (
+              <button
+                type="button"
+                className="media-primary"
+                disabled={captureBusy}
+                onClick={() => void stopCapture()}
+              >
+                {captureBusy ? "Stopping…" : "Stop capture"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="media-primary"
+                disabled={!media.electron || !selectedWindowId || captureBusy}
+                onClick={() => void startCapture()}
+              >
+                {captureBusy ? "Starting…" : "Capture Remote Play"}
+              </button>
+            )}
+          </div>
+          {(captureError || capture?.error) && (
+            <div className="media-error" role="alert">
+              <strong>CAPTURE FAILED</strong>
+              <span>{captureError || capture?.error}</span>
+            </div>
+          )}
+          <p className="transport-warning">
+            Source is marked REAL only after native D3D11 frames arrive. Process audio and Program
+            composition remain unavailable.
+          </p>
         </div>
 
         <div className="settings-card">

@@ -18,6 +18,7 @@
     "build": "npm run typecheck && npm run test && npm run build:renderer && npm run build:main",
     "quality": "npm run lint && npm run format",
     "native:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-media-host.ps1",
+    "native:capture-proof": "node scripts/prove-window-capture.mjs",
     "verify": "npm run quality && npm run build && npm run native:verify && node scripts/probe-adapters.mjs",
     "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1",
     "package:win:dir": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1 -DirectoryOnly",

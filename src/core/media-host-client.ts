@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import type { MediaHostProbe } from "../shared/contracts";
-import { getMediaHostPath, parseMediaHostProbe } from "./media-host";
+import type { MediaHostCapture, MediaHostProbe } from "../shared/contracts";
+import { getMediaHostPath, parseMediaHostCapture, parseMediaHostProbe } from "./media-host";
 
 interface PendingResponse {
   resolve(value: string): void;
@@ -39,15 +39,27 @@ export class MediaHostClient {
   }
 
   async probe(): Promise<MediaHostProbe> {
-    const line = await this.request("probe");
+    const line = await this.request({ type: "probe" });
     return parseMediaHostProbe(line);
+  }
+
+  async startCapture(windowId: string): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(await this.request({ type: "capture-start", windowId }));
+  }
+
+  async captureStatus(): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(await this.request({ type: "capture-status" }));
+  }
+
+  async stopCapture(): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(await this.request({ type: "capture-stop" }));
   }
 
   async stop(): Promise<void> {
     const child = this.child;
     if (!child) return;
     try {
-      await this.request("shutdown", 2_000);
+      await this.request({ type: "shutdown" }, 2_000);
     } catch {
       child.kill();
     }
@@ -68,7 +80,12 @@ export class MediaHostClient {
     if (this.child === child) this.child = null;
   }
 
-  private request(type: "probe" | "shutdown", timeoutMs = 5_000): Promise<string> {
+  private request(
+    command:
+      | { type: "probe" | "capture-status" | "capture-stop" | "shutdown" }
+      | { type: "capture-start"; windowId: string },
+    timeoutMs = 5_000,
+  ): Promise<string> {
     this.start();
     const child = this.child;
     if (!child) return Promise.reject(new Error("Media Host did not start."));
@@ -77,13 +94,13 @@ export class MediaHostClient {
       const timer = setTimeout(() => {
         const index = this.pending.findIndex((candidate) => candidate.resolve === resolve);
         if (index >= 0) this.pending.splice(index, 1);
-        reject(new Error(`Media Host ${type} request timed out.`));
+        reject(new Error(`Media Host ${command.type} request timed out.`));
       }, timeoutMs);
       this.pending.push({ resolve, reject, timer });
       child.stdin.write(
         `${JSON.stringify({
           schema: "pulsecast.media-host-command/v1",
-          type,
+          ...command,
         })}\n`,
       );
     });

@@ -21,6 +21,7 @@ Authority: `PULSECAST_MASTER_BLUEPRINT.md`
 
 - [x] Media Host executable and supervisor contract.
 - [x] Real Win32 discovery of official PS Remote Play windows.
+- [x] Windows Graphics Capture session lifecycle and real frame telemetry.
 - [ ] Real camera capture.
 - [ ] Real display/window capture.
 - [ ] Official PS Remote Play window source.

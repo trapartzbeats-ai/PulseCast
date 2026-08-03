@@ -263,6 +263,19 @@ export interface MediaHostProbe {
     candidateCount: number;
   };
   candidates: MediaHostWindowCandidate[];
+  capture: MediaHostCapture;
+}
+
+export interface MediaHostCapture {
+  schema: "pulsecast.media-host-capture/v1";
+  proofType: "real" | "unavailable";
+  state: "idle" | "starting" | "active" | "stalled" | "failed" | "stopped";
+  windowId: string | null;
+  frameCount: number;
+  width: number;
+  height: number;
+  lastFrameMonotonicMs: number;
+  error: string | null;
 }
 
 export interface NativeCaptureProof {
@@ -420,6 +433,10 @@ export interface PulseCastBridge {
   recover(mode: "current" | "safe" | "last-known-good"): Promise<CoreState>;
   exportShow(): Promise<{ path: string; sha256: string; entries: string[] }>;
   probeAdapters(): Promise<AdapterStatus[]>;
+  getMediaHostProbe(): Promise<MediaHostProbe>;
+  startMediaHostCapture(windowId: string): Promise<MediaHostCapture>;
+  getMediaHostCapture(): Promise<MediaHostCapture>;
+  stopMediaHostCapture(): Promise<MediaHostCapture>;
   runNativeCaptureProof(options?: {
     durationMs?: number;
     fps?: 30 | 60;

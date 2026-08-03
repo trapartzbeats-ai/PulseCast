@@ -3,11 +3,26 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
-import type { MediaHostProbe } from "../shared/contracts";
+import type { MediaHostCapture, MediaHostProbe } from "../shared/contracts";
 
 const execFileAsync = promisify(execFile);
 
 const proofTypeSchema = z.enum(["real", "fault-injected-real", "simulated", "mock", "unavailable"]);
+
+const mediaHostCaptureSchema = z.object({
+  schema: z.literal("pulsecast.media-host-capture/v1"),
+  proofType: z.enum(["real", "unavailable"]),
+  state: z.enum(["idle", "starting", "active", "stalled", "failed", "stopped"]),
+  windowId: z
+    .string()
+    .regex(/^0x[0-9a-f]+$/i)
+    .nullable(),
+  frameCount: z.number().int().nonnegative(),
+  width: z.number().int().nonnegative(),
+  height: z.number().int().nonnegative(),
+  lastFrameMonotonicMs: z.number().int().nonnegative(),
+  error: z.string().nullable(),
+});
 
 const mediaHostProbeSchema = z.object({
   schema: z.literal("pulsecast.media-host-probe/v1"),
@@ -41,6 +56,7 @@ const mediaHostProbeSchema = z.object({
       }),
     }),
   ),
+  capture: mediaHostCaptureSchema,
 });
 
 async function exists(filePath: string): Promise<boolean> {
@@ -64,13 +80,29 @@ export function parseMediaHostProbe(value: string): MediaHostProbe {
     throw new Error("Media Host candidate count does not match its candidate list.");
   }
   for (const capability of parsed.capabilities) {
-    const discovery = capability.id === "window-discovery";
+    const implemented = capability.id === "window-discovery" || capability.id === "window-capture";
     if (
-      (discovery && (capability.proofType !== "real" || capability.state !== "ready")) ||
-      (!discovery && (capability.proofType !== "unavailable" || capability.state !== "unavailable"))
+      (implemented && (capability.proofType !== "real" || capability.state !== "ready")) ||
+      (!implemented &&
+        (capability.proofType !== "unavailable" || capability.state !== "unavailable"))
     ) {
       throw new Error(`Media Host capability ${capability.id} has an invalid proof label.`);
     }
+  }
+  return parsed;
+}
+
+export function parseMediaHostCapture(value: string): MediaHostCapture {
+  const parsed = mediaHostCaptureSchema.parse(JSON.parse(value));
+  const hasFrames = parsed.frameCount > 0;
+  if (
+    (hasFrames && parsed.proofType !== "real") ||
+    (!hasFrames && parsed.proofType !== "unavailable")
+  ) {
+    throw new Error("Media Host capture proof label does not match its frame count.");
+  }
+  if (parsed.state === "active" && !hasFrames) {
+    throw new Error("Media Host cannot report active capture without a real frame.");
   }
   return parsed;
 }

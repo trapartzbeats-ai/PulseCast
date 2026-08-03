@@ -14,7 +14,9 @@ Electron main process
 └── supervised PulseCastMediaHost.exe
     ├── versioned JSONL command/probe contract
     ├── real Win32 Remote Play window discovery
-    ├── window capture: unavailable
+    ├── Windows Graphics Capture + D3D11 frame acquisition
+    ├── capture lifecycle, resolution, frame, and stall telemetry
+    ├── shared-texture presentation: unavailable
     ├── process audio: unavailable
     └── Program composition: unavailable
 
@@ -29,7 +31,10 @@ Electron renderer
 
 The current renderer is a retained control-plane prototype. Browser media
 preview is not the Program compositor. The Media Host is now a real native and
-packaged process boundary, but its first slice performs discovery only. The
+packaged process boundary. It now opens real Windows Graphics Capture sessions
+and consumes native D3D11 frames, but only the labeled mock-window path has
+been proven. A shared-texture presentation surface and the official Sony
+Remote Play client proof remain open. The
 FFmpeg DirectShow worker is a bounded proof adapter and its network start IPC
 is disabled.
 

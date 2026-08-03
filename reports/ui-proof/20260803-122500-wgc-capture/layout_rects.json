@@ -1,0 +1,10 @@
+{
+  "schema": "pulsecast.ui-layout-rects/v1",
+  "viewport": { "width": 1426, "height": 894 },
+  "regions": {
+    "workspaceNavigation": { "x": 8, "y": 67, "width": 1410, "height": 55 },
+    "captureHeader": { "x": 32, "y": 155, "width": 1360, "height": 163 },
+    "captureTelemetry": { "x": 32, "y": 390, "width": 1360, "height": 137 },
+    "captureBoundary": { "x": 32, "y": 581, "width": 1360, "height": 41 }
+  }
+}

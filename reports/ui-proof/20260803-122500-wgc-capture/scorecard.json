@@ -1,0 +1,14 @@
+{
+  "schema": "pulsecast.ui-scorecard/v1",
+  "status": "PASS",
+  "scores": {
+    "packagedRuntime": "PASS",
+    "candidateSelection": "PASS",
+    "activeFrameBinding": "PASS",
+    "stopState": "PASS",
+    "truthfulness": "PASS",
+    "desktopLayout": "PASS",
+    "officialSonyClient": "NOT_PROVEN",
+    "sharedTexturePreview": "NOT_IN_SLICE"
+  }
+}

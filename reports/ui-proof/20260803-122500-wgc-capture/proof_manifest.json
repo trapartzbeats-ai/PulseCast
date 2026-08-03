@@ -1,0 +1,15 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Gate 1 Windows Graphics Capture controls",
+  "capturedFrom": "release-reboot/build-20260803-122625/win-unpacked/PulseCast Studio.exe",
+  "runtime": "packaged Electron plus packaged Media Host and labeled mock Remote Play fixture",
+  "capturedAt": "2026-08-03T17:28:00Z",
+  "viewport": "1426x894",
+  "proofType": "fault-injected-real",
+  "screenshots": [
+    "screenshot_default.png",
+    "screenshot_states/active-real-frames.png",
+    "screenshot_states/stopped-last-capture.png"
+  ],
+  "status": "PASS"
+}

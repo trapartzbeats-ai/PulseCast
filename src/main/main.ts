@@ -55,6 +55,22 @@ function registerIpc(): void {
       return probeAdapters({ error: message });
     }
   });
+  ipcMain.handle("pulsecast:media-host:probe", () => {
+    if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+    return mediaHostClient.probe();
+  });
+  ipcMain.handle("pulsecast:media-host:capture-start", (_event, windowId: string) => {
+    if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+    return mediaHostClient.startCapture(windowId);
+  });
+  ipcMain.handle("pulsecast:media-host:capture-status", () => {
+    if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+    return mediaHostClient.captureStatus();
+  });
+  ipcMain.handle("pulsecast:media-host:capture-stop", () => {
+    if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+    return mediaHostClient.stopCapture();
+  });
   ipcMain.handle(
     "pulsecast:run-native-capture-proof",
     async (_event, options: { durationMs?: number; fps?: 30 | 60 }) => {

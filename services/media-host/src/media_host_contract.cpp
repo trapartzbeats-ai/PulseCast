@@ -20,6 +20,11 @@ bool Contains(std::string_view value, std::string_view fragment) {
   return value.find(fragment) != std::string_view::npos;
 }
 
+bool IsVersionedCommand(std::string_view input, std::string_view type) {
+  const auto type_fragment = std::string{"\"type\":\""} + std::string{type} + "\"";
+  return Contains(input, kCommandSchema) && Contains(input, type_fragment);
+}
+
 }  // namespace
 
 std::string JsonEscape(std::string_view value) {
@@ -71,7 +76,8 @@ bool IsRemotePlayCandidate(std::string_view title, std::string_view executable_n
 
 std::string BuildProbeJson(
     const std::vector<RemotePlayWindow>& candidates,
-    std::uint32_t process_id) {
+    std::uint32_t process_id,
+    const CaptureSnapshot& capture) {
   std::ostringstream output;
   output << "{\"schema\":\"" << kProbeSchema << "\","
          << "\"adapter\":\"" << kAdapterName << "\","
@@ -80,7 +86,7 @@ std::string BuildProbeJson(
          << "\"processId\":" << process_id << ','
          << "\"capabilities\":["
          << "{\"id\":\"window-discovery\",\"proofType\":\"real\",\"state\":\"ready\"},"
-         << "{\"id\":\"window-capture\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"},"
+         << "{\"id\":\"window-capture\",\"proofType\":\"real\",\"state\":\"ready\"},"
          << "{\"id\":\"process-audio\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"},"
          << "{\"id\":\"program-composition\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"}],"
          << "\"remotePlay\":{\"state\":\""
@@ -104,18 +110,78 @@ std::string BuildProbeJson(
            << ",\"height\":" << candidate.bounds.height << "}}";
   }
 
-  output << "]}";
+  output << "],\"capture\":" << BuildCaptureJson(capture) << '}';
   return output.str();
 }
 
+std::string CaptureStateName(CaptureState state) {
+  switch (state) {
+    case CaptureState::idle:
+      return "idle";
+    case CaptureState::starting:
+      return "starting";
+    case CaptureState::active:
+      return "active";
+    case CaptureState::stalled:
+      return "stalled";
+    case CaptureState::failed:
+      return "failed";
+    case CaptureState::stopped:
+      return "stopped";
+  }
+  return "failed";
+}
+
+std::string BuildCaptureJson(const CaptureSnapshot& capture) {
+  const auto has_frames = capture.frame_count > 0;
+  std::ostringstream output;
+  output << "{\"schema\":\"" << kCaptureSchema << "\","
+         << "\"proofType\":\"" << (has_frames ? "real" : "unavailable") << "\","
+         << "\"state\":\"" << CaptureStateName(capture.state) << "\","
+         << "\"windowId\":"
+         << (capture.window_id.empty() ? "null" : "\"" + JsonEscape(capture.window_id) + "\"")
+         << ",\"frameCount\":" << capture.frame_count
+         << ",\"width\":" << capture.width
+         << ",\"height\":" << capture.height
+         << ",\"lastFrameMonotonicMs\":" << capture.last_frame_monotonic_ms
+         << ",\"error\":"
+         << (capture.error.empty() ? "null" : "\"" + JsonEscape(capture.error) + "\"")
+         << '}';
+  return output.str();
+}
+
+std::string ExtractCommandString(std::string_view input, std::string_view property) {
+  const auto prefix = std::string{"\""} + std::string{property} + "\":\"";
+  const auto start = input.find(prefix);
+  if (start == std::string_view::npos) {
+    return {};
+  }
+  const auto value_start = start + prefix.size();
+  const auto end = input.find('"', value_start);
+  if (end == std::string_view::npos) {
+    return {};
+  }
+  return std::string{input.substr(value_start, end - value_start)};
+}
+
 bool IsProbeCommand(std::string_view input) {
-  return input == "probe" ||
-         (Contains(input, kCommandSchema) && Contains(input, "\"type\":\"probe\""));
+  return input == "probe" || IsVersionedCommand(input, "probe");
 }
 
 bool IsShutdownCommand(std::string_view input) {
-  return input == "shutdown" ||
-         (Contains(input, kCommandSchema) && Contains(input, "\"type\":\"shutdown\""));
+  return input == "shutdown" || IsVersionedCommand(input, "shutdown");
+}
+
+bool IsCaptureStartCommand(std::string_view input) {
+  return IsVersionedCommand(input, "capture-start");
+}
+
+bool IsCaptureStatusCommand(std::string_view input) {
+  return IsVersionedCommand(input, "capture-status");
+}
+
+bool IsCaptureStopCommand(std::string_view input) {
+  return IsVersionedCommand(input, "capture-stop");
 }
 
 }  // namespace pulsecast::media_host

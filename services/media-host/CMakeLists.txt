@@ -23,10 +23,14 @@ target_compile_definitions(PulseCastMediaHostContract PUBLIC
 
 add_executable(PulseCastMediaHost
   src/main.cpp
+  src/window_capture.cpp
   src/window_discovery.cpp
 )
 target_link_libraries(PulseCastMediaHost PRIVATE
   PulseCastMediaHostContract
+  d3d11
+  dxgi
+  windowsapp
   user32
 )
 

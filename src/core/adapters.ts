@@ -82,16 +82,19 @@ export async function probeAdapters(mediaHostOverride?: {
       proofType: mediaHost.available ? "real" : "unavailable",
       version: mediaHost.available ? mediaHost.probe.version : null,
       detail: mediaHost.available
-        ? mediaHost.probe.remotePlay.candidateCount > 0
-          ? `Real Windows discovery found ${mediaHost.probe.remotePlay.candidateCount} PS Remote Play window candidate(s). Capture and process audio remain unavailable.`
-          : "Real Windows discovery is ready; no PS Remote Play window is currently detected. Capture and process audio remain unavailable."
+        ? mediaHost.probe.capture.state === "active"
+          ? `Real Windows Graphics Capture is active at ${mediaHost.probe.capture.width} × ${mediaHost.probe.capture.height} with ${mediaHost.probe.capture.frameCount} frame(s). Process audio remains unavailable.`
+          : mediaHost.probe.remotePlay.candidateCount > 0
+            ? `Real Windows discovery found ${mediaHost.probe.remotePlay.candidateCount} PS Remote Play window candidate(s). Select one to start frame capture; process audio remains unavailable.`
+            : "Real Windows discovery and capture are ready; no PS Remote Play window is currently detected. Process audio remains unavailable."
         : mediaHost.error,
       capabilities: mediaHost.available
         ? [
             "process contract v1",
             "real window discovery",
             `${mediaHost.probe.remotePlay.candidateCount} Remote Play candidate(s)`,
-            "window capture unavailable",
+            "Windows Graphics Capture ready",
+            `${mediaHost.probe.capture.frameCount} captured frame(s)`,
             "process audio unavailable",
           ]
         : [],

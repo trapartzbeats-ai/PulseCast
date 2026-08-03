@@ -32,9 +32,11 @@ No variable may contain a stream key or OAuth token.
 The smoke script verifies the actual unpacked executable, a visible application
 window, working Show/checkpoint creation, clean close, and lock removal. The
 2026-08-03 Gate 1 package additionally proved that the embedded Media Host can
-run its real discovery probe and is supervised by Electron. It does not prove
-PS Remote Play frame capture, process audio, Program media, recording,
-destination routing, installer behavior, or a production stream.
+run its real discovery probe, is supervised by Electron, and can capture real
+D3D11 frames from a labeled mock Remote Play window. That capture proof is
+`fault-injected-real`. It does not prove the official Sony Remote Play client,
+a connected PS5, shared-texture presentation, process audio, Program media,
+recording, destination routing, installer behavior, or a production stream.
 
 Installer, portable, upgrade, uninstall, media, and routing proof remain
 separate release gates.

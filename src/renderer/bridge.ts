@@ -72,6 +72,15 @@ const browserBridge: PulseCastBridge = {
   async probeAdapters(): Promise<AdapterStatus[]> {
     return [
       {
+        id: "media-host",
+        name: "PulseCast Media Host",
+        state: "unavailable",
+        proofType: "unavailable",
+        version: null,
+        detail: "Native Windows Graphics Capture is available in Electron, not browser preview.",
+        capabilities: [],
+      },
+      {
         id: "screen-recorder",
         name: "ScreenRecorder process adapter",
         state: "unavailable",
@@ -108,6 +117,18 @@ const browserBridge: PulseCastBridge = {
         capabilities: ["canonical owner", "reduced motion", "lifecycle disposal"],
       },
     ];
+  },
+  async getMediaHostProbe() {
+    throw new Error("Open the Electron app to discover PS Remote Play windows.");
+  },
+  async startMediaHostCapture() {
+    throw new Error("Open the Electron app to start Windows Graphics Capture.");
+  },
+  async getMediaHostCapture() {
+    throw new Error("Open the Electron app to inspect Windows Graphics Capture.");
+  },
+  async stopMediaHostCapture() {
+    throw new Error("Open the Electron app to stop Windows Graphics Capture.");
   },
   async runNativeCaptureProof(): Promise<NativeCaptureProof> {
     return {

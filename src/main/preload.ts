@@ -12,6 +12,11 @@ const bridge: PulseCastBridge = {
   recover: (mode) => ipcRenderer.invoke("pulsecast:recover", mode),
   exportShow: () => ipcRenderer.invoke("pulsecast:export-show"),
   probeAdapters: () => ipcRenderer.invoke("pulsecast:probe-adapters"),
+  getMediaHostProbe: () => ipcRenderer.invoke("pulsecast:media-host:probe"),
+  startMediaHostCapture: (windowId) =>
+    ipcRenderer.invoke("pulsecast:media-host:capture-start", windowId),
+  getMediaHostCapture: () => ipcRenderer.invoke("pulsecast:media-host:capture-status"),
+  stopMediaHostCapture: () => ipcRenderer.invoke("pulsecast:media-host:capture-stop"),
   runNativeCaptureProof: (options) =>
     ipcRenderer.invoke("pulsecast:run-native-capture-proof", options),
   probeRealMedia: () => ipcRenderer.invoke("pulsecast:media:probe"),

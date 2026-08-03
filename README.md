@@ -17,6 +17,8 @@ Current real capabilities include:
 - canonical Pulse Core 1.9 renderer integration;
 - a supervised C++20 `PulseCastMediaHost.exe` with a versioned JSONL contract;
 - real Win32 discovery of official PS Remote Play top-level windows;
+- Windows Graphics Capture/D3D11 frame acquisition with start, status, stop,
+  resolution, stall, and frame-count telemetry;
 - browser/Electron device preview;
 - bounded camera/microphone and display-to-MP4 proof adapters;
 - packaged Windows application shell.
@@ -26,6 +28,10 @@ Twitch/Facebook destination routing, and isolated broadcast continuity are
 currently `unavailable`. The older direct camera/microphone RTMPS worker is
 disabled at the Electron boundary because it bypasses Program and does not
 meet the security contract.
+
+Window capture currently has `fault-injected-real` proof against a labeled
+mock Remote Play window. The official Sony client and PS5 source remain
+`unavailable` until that exact live path produces frames in a named proof run.
 
 Read these before implementation:
 
