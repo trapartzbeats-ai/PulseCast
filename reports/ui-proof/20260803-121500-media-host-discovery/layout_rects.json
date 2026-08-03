@@ -1,0 +1,10 @@
+{
+  "schema": "pulsecast.ui-layout-rects/v1",
+  "viewport": { "width": 1426, "height": 894 },
+  "regions": {
+    "topStatus": { "x": 8, "y": 29, "width": 1410, "height": 37 },
+    "workspaceNavigation": { "x": 8, "y": 67, "width": 1410, "height": 55 },
+    "playStationSource": { "x": 31, "y": 155, "width": 1361, "height": 169 },
+    "deviceSettings": { "x": 31, "y": 330, "width": 1361, "height": 294 }
+  }
+}

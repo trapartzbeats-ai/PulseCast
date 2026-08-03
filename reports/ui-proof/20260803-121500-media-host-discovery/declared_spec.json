@@ -1,0 +1,19 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "surface": "Settings and diagnostics",
+  "requiredClaims": [
+    "Official PS Remote Play",
+    "Discovery real",
+    "No Remote Play window currently detected",
+    "Capture unavailable",
+    "Process audio unavailable",
+    "Twitch unavailable",
+    "Facebook unavailable"
+  ],
+  "forbiddenClaims": [
+    "PS5 connected",
+    "Remote Play capture ready",
+    "Program ready",
+    "Live route ready"
+  ]
+}

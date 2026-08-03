@@ -14,6 +14,8 @@ The package produces an NSIS installer, portable executable, and unpacked
 directory beneath an immutable `release-reboot/build-*` folder using the
 product name `PulseCast Studio`. `release-reboot/latest.json` points at the
 current build so packaging never has to overwrite a locked Electron directory.
+Packaging first compiles and tests the native Media Host and places it at
+`resources/media-host/PulseCastMediaHost.exe`.
 
 ## Runtime variables
 
@@ -28,9 +30,11 @@ No variable may contain a stream key or OAuth token.
 ## Packaged smoke boundary
 
 The smoke script verifies the actual unpacked executable, a visible application
-window, working Show/checkpoint creation, clean close, and lock removal. It does
-not prove Program media, recording, destination routing, installer behavior,
-or a production stream.
+window, working Show/checkpoint creation, clean close, and lock removal. The
+2026-08-03 Gate 1 package additionally proved that the embedded Media Host can
+run its real discovery probe and is supervised by Electron. It does not prove
+PS Remote Play frame capture, process audio, Program media, recording,
+destination routing, installer behavior, or a production stream.
 
 Installer, portable, upgrade, uninstall, media, and routing proof remain
 separate release gates.

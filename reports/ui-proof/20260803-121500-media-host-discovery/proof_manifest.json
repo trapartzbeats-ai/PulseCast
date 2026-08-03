@@ -1,0 +1,14 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Gate 1 Media Host discovery",
+  "capturedFrom": "release-reboot/build-20260803-120509/win-unpacked/PulseCast Studio.exe",
+  "runtime": "real packaged Electron application with supervised packaged Media Host",
+  "capturedAt": "2026-08-03T17:15:00Z",
+  "viewport": "1426x894",
+  "screenshots": [
+    "screenshot_default.png",
+    "screenshot_states/settings.png",
+    "screenshot_states/diagnostics.png"
+  ],
+  "status": "PASS"
+}

@@ -653,7 +653,7 @@ function Studio({
 
       {workspace === "settings" ? (
         <div style={{ flex: 1, overflow: "auto", padding: "24px" }}>
-          <SettingsView media={media} />
+          <SettingsView media={media} adapters={adapters} />
         </div>
       ) : (
         <>

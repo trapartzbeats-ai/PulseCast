@@ -14,6 +14,8 @@ This ledger describes current source. Historical reports do not override it.
 | Pulse renderer | real | Renderer pixels only | adapter pending |
 | Camera/mic browser preview | real | Renderer preview only | proof only |
 | Display browser preview | real | Renderer preview only | proof only |
+| Native Media Host process contract | real | Supervised C++20 JSONL process | expand in Gate 1 |
+| Official PS Remote Play window discovery | real | Media Host, Win32 top-level-window inventory | source selector next |
 | Official PS Remote Play window source | unavailable | none | Gate 1 |
 | PS Remote Play process audio | unavailable | none | Gate 2 |
 | Twitch Window Source | unavailable | none | Gate 1 |
@@ -37,6 +39,11 @@ This ledger describes current source. Historical reports do not override it.
 | Native PlayStation source | unavailable | none | Gate 6A |
 | Independent route recovery | unavailable | none | Gate 4 |
 | Renderer-crash continuity | unavailable | none | Gate 5 |
+
+The current machine returned zero matching PS Remote Play windows on
+2026-08-03. That is a successful `real` discovery result, not proof of window
+capture. The Media Host explicitly reports window capture, process audio, and
+Program composition as `unavailable`.
 
 ## Proof separation
 

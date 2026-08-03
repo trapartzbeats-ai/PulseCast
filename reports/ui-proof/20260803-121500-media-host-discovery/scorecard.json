@@ -1,0 +1,12 @@
+{
+  "schema": "pulsecast.ui-scorecard/v1",
+  "status": "PASS",
+  "scores": {
+    "packagedRuntime": "PASS",
+    "nativeProcessBinding": "PASS",
+    "truthfulness": "PASS",
+    "desktopLayout": "PASS",
+    "emptyState": "PASS",
+    "liveRemotePlayCapture": "NOT_IN_SLICE"
+  }
+}

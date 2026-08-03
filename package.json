@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"npm:dev:electron\"",
     "dev:renderer": "vite --host 127.0.0.1",
-    "dev:electron": "wait-on http://127.0.0.1:5173 && npm run build:main && cross-env PULSECAST_DEV_URL=http://127.0.0.1:5173 electron .",
+    "dev:electron": "wait-on http://127.0.0.1:5173 && npm run native:verify && npm run build:main && cross-env PULSECAST_DEV_URL=http://127.0.0.1:5173 electron .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.main.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -17,7 +17,8 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build": "npm run typecheck && npm run test && npm run build:renderer && npm run build:main",
     "quality": "npm run lint && npm run format",
-    "verify": "npm run quality && npm run build && node scripts/probe-adapters.mjs",
+    "native:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-media-host.ps1",
+    "verify": "npm run quality && npm run build && npm run native:verify && node scripts/probe-adapters.mjs",
     "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1",
     "package:win:dir": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1 -DirectoryOnly",
     "smoke:packaged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-packaged.ps1",
@@ -74,6 +75,10 @@
           "README.txt",
           "SHA256SUMS"
         ]
+      },
+      {
+        "from": "build/media-host/Release/PulseCastMediaHost.exe",
+        "to": "media-host/PulseCastMediaHost.exe"
       }
     ],
     "files": [

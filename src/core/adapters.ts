@@ -3,7 +3,8 @@ import { execFile } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { AdapterStatus, NativeCaptureProof } from "../shared/contracts";
+import type { AdapterStatus, MediaHostProbe, NativeCaptureProof } from "../shared/contracts";
+import { probeMediaHost } from "./media-host";
 
 const execFileAsync = promisify(execFile);
 
@@ -46,17 +47,55 @@ export function getScreenRecorderPath(): string {
   return path.resolve(process.env.PULSECAST_SCREENRECORDER_PATH ?? defaults.screenRecorder);
 }
 
-export async function probeAdapters(): Promise<AdapterStatus[]> {
+export async function probeAdapters(mediaHostOverride?: {
+  probe?: MediaHostProbe;
+  error?: string;
+}): Promise<AdapterStatus[]> {
   const screenRecorderPath = getScreenRecorderPath();
-  const [screenRecorder, ourConsole, tempo, pulseCore] = await Promise.all([
+  const [fallbackMediaHost, screenRecorder, ourConsole, tempo, pulseCore] = await Promise.all([
+    mediaHostOverride ? Promise.resolve(null) : probeMediaHost(),
     fileExists(screenRecorderPath),
     fileExists(defaults.ourConsole),
     fileExists(defaults.tempo),
     fileExists(defaults.pulsePackage),
   ]);
+  const mediaHost = mediaHostOverride?.probe
+    ? {
+        available: true as const,
+        executablePath: "supervised-process",
+        probe: mediaHostOverride.probe,
+      }
+    : mediaHostOverride?.error
+      ? {
+          available: false as const,
+          executablePath: "supervised-process",
+          error: mediaHostOverride.error,
+        }
+      : fallbackMediaHost!;
   const pulseVersion = pulseCore ? await readPackageVersion(defaults.pulsePackage) : null;
 
   return [
+    {
+      id: "media-host",
+      name: "PulseCast Media Host",
+      state: mediaHost.available ? "ready" : "unavailable",
+      proofType: mediaHost.available ? "real" : "unavailable",
+      version: mediaHost.available ? mediaHost.probe.version : null,
+      detail: mediaHost.available
+        ? mediaHost.probe.remotePlay.candidateCount > 0
+          ? `Real Windows discovery found ${mediaHost.probe.remotePlay.candidateCount} PS Remote Play window candidate(s). Capture and process audio remain unavailable.`
+          : "Real Windows discovery is ready; no PS Remote Play window is currently detected. Capture and process audio remain unavailable."
+        : mediaHost.error,
+      capabilities: mediaHost.available
+        ? [
+            "process contract v1",
+            "real window discovery",
+            `${mediaHost.probe.remotePlay.candidateCount} Remote Play candidate(s)`,
+            "window capture unavailable",
+            "process audio unavailable",
+          ]
+        : [],
+    },
     {
       id: "screen-recorder",
       name: "ScreenRecorder process adapter",

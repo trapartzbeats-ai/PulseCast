@@ -7,6 +7,11 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 
 const candidates = [
   {
+    id: "media-host",
+    path: path.join(projectRoot, "build", "media-host", "Release", "PulseCastMediaHost.exe"),
+    required: true,
+  },
+  {
     id: "screen-recorder",
     path:
       process.env.PULSECAST_SCREENRECORDER_PATH ??

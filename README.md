@@ -15,6 +15,8 @@ Current real capabilities include:
 - autosave projection, JSONL journal, checkpoints, and recovery;
 - checksummed `.pcast` export;
 - canonical Pulse Core 1.9 renderer integration;
+- a supervised C++20 `PulseCastMediaHost.exe` with a versioned JSONL contract;
+- real Win32 discovery of official PS Remote Play top-level windows;
 - browser/Electron device preview;
 - bounded camera/microphone and display-to-MP4 proof adapters;
 - packaged Windows application shell.
@@ -52,7 +54,9 @@ npm.cmd run verify
 ```
 
 `verify` requires lint, formatting, TypeScript, all tests, renderer/main
-production builds, and adjacent-adapter inventory to pass.
+production builds, the native Media Host build and CTest contract suite, a
+one-shot native probe, a supervised JSONL probe, and adjacent-adapter inventory
+to pass.
 
 ## Package and smoke
 
@@ -64,7 +68,9 @@ npm.cmd run smoke:packaged
 Artifacts are written beneath an immutable `release-reboot/build-*` directory.
 `release-reboot/latest.json` identifies the current build. Packaged smoke launches the unpacked
 application with isolated test data, verifies its real window and persistence
-files, closes it, and confirms clean lock removal.
+files, closes it, and confirms clean lock removal. The current package also
+contains `resources/media-host/PulseCastMediaHost.exe` and launches it as a
+supervised child of the Electron main process.
 
 The FFmpeg and ffprobe binaries in `vendor/media/` are tracked with Git LFS.
 They are GPL v3 builds and remain proof/transitional tooling, not the final

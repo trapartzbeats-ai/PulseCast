@@ -1,6 +1,6 @@
 # PulseCast Architecture
 
-Status: Gate 0 baseline under the v2 master blueprint.
+Status: Gate 1 in progress under the v2 master blueprint.
 
 ## Current implementation
 
@@ -10,7 +10,13 @@ Electron main process
 ├── JSON projection + JSONL journal
 ├── checkpoint/recovery/export
 ├── bounded media proof IPC
-└── adapter inventory
+├── adapter inventory
+└── supervised PulseCastMediaHost.exe
+    ├── versioned JSONL command/probe contract
+    ├── real Win32 Remote Play window discovery
+    ├── window capture: unavailable
+    ├── process audio: unavailable
+    └── Program composition: unavailable
 
 Electron renderer
 ├── retained Foundation workspace
@@ -22,8 +28,10 @@ Electron renderer
 ```
 
 The current renderer is a retained control-plane prototype. Browser media
-preview is not the Program compositor. The FFmpeg DirectShow worker is a
-bounded proof adapter and its network start IPC is disabled.
+preview is not the Program compositor. The Media Host is now a real native and
+packaged process boundary, but its first slice performs discovery only. The
+FFmpeg DirectShow worker is a bounded proof adapter and its network start IPC
+is disabled.
 
 ## Required product architecture
 

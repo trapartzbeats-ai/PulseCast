@@ -23,6 +23,11 @@ if (-not $releaseRoot.StartsWith(
   throw "Release root escaped the project: $releaseRoot"
 }
 
+& npm.cmd run native:verify
+if ($LASTEXITCODE -ne 0) {
+  throw "PulseCast Media Host build failed with exit code $LASTEXITCODE."
+}
+
 & npm.cmd run build
 if ($LASTEXITCODE -ne 0) {
   throw "PulseCast build failed with exit code $LASTEXITCODE."

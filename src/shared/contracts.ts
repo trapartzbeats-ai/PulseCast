@@ -222,13 +222,47 @@ export interface CommandResult {
 }
 
 export interface AdapterStatus {
-  id: "screen-recorder" | "ourconsole" | "tempo" | "pulse-core";
+  id: "media-host" | "screen-recorder" | "ourconsole" | "tempo" | "pulse-core";
   name: string;
   state: "ready" | "degraded" | "unavailable";
   proofType: ProofType;
   version: string | null;
   detail: string;
   capabilities: string[];
+}
+
+export interface MediaHostCapability {
+  id: "window-discovery" | "window-capture" | "process-audio" | "program-composition";
+  proofType: ProofType;
+  state: "ready" | "unavailable";
+}
+
+export interface MediaHostWindowCandidate {
+  windowId: string;
+  processId: number;
+  title: string;
+  executableName: string;
+  className: string;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface MediaHostProbe {
+  schema: "pulsecast.media-host-probe/v1";
+  adapter: "MediaHostProcessAdapter/v1";
+  version: string;
+  proofType: "real";
+  processId: number;
+  capabilities: MediaHostCapability[];
+  remotePlay: {
+    state: "detected" | "not-detected";
+    candidateCount: number;
+  };
+  candidates: MediaHostWindowCandidate[];
 }
 
 export interface NativeCaptureProof {

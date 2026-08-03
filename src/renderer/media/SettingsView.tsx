@@ -1,16 +1,37 @@
 import { getBridge } from "../bridge";
+import type { AdapterStatus } from "../../shared/contracts";
 import { formatDb, type UseMediaDevicesReturn } from "./useMediaDevices";
 
 const bridge = getBridge();
 
 interface SettingsViewProps {
   media: UseMediaDevicesReturn;
+  adapters: AdapterStatus[];
 }
 
-export function SettingsView({ media }: SettingsViewProps) {
+export function SettingsView({ media, adapters }: SettingsViewProps) {
+  const mediaHost = adapters.find((adapter) => adapter.id === "media-host");
   return (
     <section className="settings-view">
       <div className="settings-column">
+        <div className="settings-card">
+          <span className="panel-label">PLAYSTATION SOURCE</span>
+          <h2>Official PS Remote Play</h2>
+          <p className="media-copy">
+            {mediaHost?.detail ?? "Native Media Host discovery has not completed yet."}
+          </p>
+          <div className="stream-health stream-health--routes">
+            <div>
+              <span>Discovery</span>
+              <strong>{mediaHost?.proofType === "real" ? "REAL" : "UNAVAILABLE"}</strong>
+            </div>
+            <div>
+              <span>Capture</span>
+              <strong>UNAVAILABLE</strong>
+            </div>
+          </div>
+        </div>
+
         <div className="settings-card">
           <span className="panel-label">REAL DEVICES</span>
           <h2>Camera</h2>
