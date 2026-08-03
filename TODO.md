@@ -23,6 +23,7 @@ Authority: `PULSECAST_MASTER_BLUEPRINT.md`
 - [x] Real Win32 discovery of official PS Remote Play windows.
 - [x] Windows Graphics Capture session lifecycle and real frame telemetry.
 - [x] Keyed D3D11 shared-texture presentation in Settings and Production source monitors.
+- [x] One-source 1920 × 1080 D3D11 Program-video compositor with position/size transform.
 - [ ] Real camera capture.
 - [ ] Real display/window capture.
 - [ ] Official PS Remote Play window source.

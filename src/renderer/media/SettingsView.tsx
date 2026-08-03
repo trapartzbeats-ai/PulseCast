@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { getBridge } from "../bridge";
-import type { AdapterStatus, MediaHostProbe } from "../../shared/contracts";
+import type {
+  AdapterStatus,
+  MediaHostProbe,
+  MediaHostProgramTransform,
+} from "../../shared/contracts";
 import { formatDb, type UseMediaDevicesReturn } from "./useMediaDevices";
 import { NativeMediaHostPreview } from "./NativeMediaHostPreview";
 
@@ -18,6 +22,12 @@ export function SettingsView({ media, adapters, nativePreviewBlocked = false }: 
   const [selectedWindowId, setSelectedWindowId] = useState("");
   const [captureBusy, setCaptureBusy] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const [programTransform, setProgramTransform] = useState<MediaHostProgramTransform>({
+    x: 160,
+    y: 90,
+    width: 1600,
+    height: 900,
+  });
 
   useEffect(() => {
     if (!media.electron) return;
@@ -47,6 +57,14 @@ export function SettingsView({ media, adapters, nativePreviewBlocked = false }: 
     [mediaHostProbe, selectedWindowId],
   );
   const capture = mediaHostProbe?.capture;
+  useEffect(() => {
+    if (capture?.program) setProgramTransform(capture.program.transform);
+  }, [
+    capture?.program.transform.x,
+    capture?.program.transform.y,
+    capture?.program.transform.width,
+    capture?.program.transform.height,
+  ]);
   const captureLabel =
     capture?.state === "active" && capture.proofType === "real"
       ? "REAL"
@@ -82,6 +100,19 @@ export function SettingsView({ media, adapters, nativePreviewBlocked = false }: 
       setMediaHostProbe(await bridge.getMediaHostProbe());
     } catch (error) {
       setCaptureError(error instanceof Error ? error.message : "Window capture did not stop.");
+    } finally {
+      setCaptureBusy(false);
+    }
+  };
+
+  const applyProgramTransform = async () => {
+    setCaptureBusy(true);
+    setCaptureError("");
+    try {
+      await bridge.setMediaHostProgramTransform(programTransform);
+      setMediaHostProbe(await bridge.getMediaHostProbe());
+    } catch (error) {
+      setCaptureError(error instanceof Error ? error.message : "Program transform failed.");
     } finally {
       setCaptureBusy(false);
     }
@@ -150,6 +181,63 @@ export function SettingsView({ media, adapters, nativePreviewBlocked = false }: 
                     : capture.preview.state.toUpperCase()}
                 </strong>
               </div>
+              <div>
+                <span>Program video</span>
+                <strong>{capture.program.state.toUpperCase()}</strong>
+              </div>
+              <div>
+                <span>Composed frames</span>
+                <strong>{capture.program.composedFrameCount}</strong>
+              </div>
+              <div>
+                <span>Output</span>
+                <strong>
+                  {capture.program.outputWidth} × {capture.program.outputHeight}
+                </strong>
+              </div>
+              <div>
+                <span>Source transform</span>
+                <strong>
+                  {capture.program.transform.x}, {capture.program.transform.y} ·{" "}
+                  {capture.program.transform.width} × {capture.program.transform.height}
+                </strong>
+              </div>
+            </div>
+          )}
+          {capture?.program && (
+            <div className="program-transform-panel">
+              <div className="program-transform-panel__header">
+                <span>1920 × 1080 source transform</span>
+                <strong>ONE-SOURCE COMPOSITOR</strong>
+              </div>
+              <div className="program-transform-grid">
+                {(["x", "y", "width", "height"] as const).map((field) => (
+                  <label key={field}>
+                    <span>{field}</span>
+                    <input
+                      type="number"
+                      min={field === "x" || field === "y" ? 0 : 1}
+                      max={field === "x" || field === "width" ? 1920 : 1080}
+                      value={programTransform[field]}
+                      disabled={captureBusy}
+                      onChange={(event) =>
+                        setProgramTransform((current) => ({
+                          ...current,
+                          [field]: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="media-link"
+                disabled={captureBusy || capture.state !== "active"}
+                onClick={() => void applyProgramTransform()}
+              >
+                Apply native transform
+              </button>
             </div>
           )}
           <NativeMediaHostPreview capture={capture} disabled={nativePreviewBlocked} />
@@ -181,8 +269,9 @@ export function SettingsView({ media, adapters, nativePreviewBlocked = false }: 
             </div>
           )}
           <p className="transport-warning">
-            Source is marked REAL only after native D3D11 frames arrive. Process audio and Program
-            composition remain unavailable.
+            Capture and Program video are marked REAL only after native D3D11 frames arrive and are
+            composed. This is a one-source video test path; camera layering, Program audio, and
+            destination output remain unavailable.
           </p>
         </div>
 

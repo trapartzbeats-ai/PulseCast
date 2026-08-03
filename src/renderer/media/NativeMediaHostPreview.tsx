@@ -91,16 +91,16 @@ export function NativeMediaHostPreview({
     <div className={`native-preview-frame native-preview-frame--${variant}`}>
       <div className="native-preview-frame__header">
         <span>
-          {variant === "canvas" ? "PLAYSTATION SOURCE PREVIEW" : "NATIVE SHARED-TEXTURE PREVIEW"}
+          {variant === "canvas" ? "PROGRAM VIDEO TEST OUTPUT" : "NATIVE PROGRAM TEXTURE PREVIEW"}
         </span>
         <strong>
-          {effectiveCapture.preview.presentedFrameCount > 0
-            ? `${effectiveCapture.preview.presentedFrameCount} presented`
+          {effectiveCapture.program.composedFrameCount > 0
+            ? `${effectiveCapture.program.composedFrameCount} composed · ${effectiveCapture.preview.presentedFrameCount} presented`
             : "Waiting for surface"}
         </strong>
       </div>
       <div className="native-preview-surface" ref={previewSurface}>
-        <span>Media Host presentation surface</span>
+        <span>Media Host 1920 × 1080 compositor surface</span>
       </div>
     </div>
   );

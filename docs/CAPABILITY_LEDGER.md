@@ -20,6 +20,7 @@ This ledger describes current source. Historical reports do not override it.
 | Capture start/status/stop UI | fault-injected-real | Packaged Electron controls and native telemetry | retain |
 | Keyed D3D11 shared-texture publication and reopen | fault-injected-real | Media Host producer texture reopened on a second D3D11 device | prove official client next |
 | Packaged native source preview | fault-injected-real | Native child-HWND presentation in Settings and Production | retain as source monitor |
+| One-source D3D11 Program-video compositor | fault-injected-real | 1920 × 1080 native output, position/size transform, composed-frame telemetry | add camera and graphics |
 | Official PS Remote Play window source | unavailable | none | Gate 1 |
 | PS Remote Play process audio | unavailable | none | Gate 2 |
 | Twitch Window Source | unavailable | none | Gate 1 |
@@ -30,7 +31,7 @@ This ledger describes current source. Historical reports do not override it.
 | RTMPS URL/tee logic | real | Engine code; IPC disabled | unavailable to product |
 | Audio route controls | simulated | Show state only | replace |
 | Foundation destinations | mock | Show state only | replace |
-| Program video compositor | unavailable | none | Gate 1 |
+| Multi-source Program video compositor | unavailable | one-source path only | Gate 1 |
 | Preview/Program take | unavailable | none | Gate 1 |
 | Program recording | unavailable | none | Gate 1/2 |
 | Program audio buses | unavailable | none | Gate 2 |
@@ -49,9 +50,11 @@ initial 2026-08-03 discovery run. That is a successful `real` discovery result,
 not proof of official-client capture. A later fault-injected run captured
 non-zero D3D11 frames from a labeled mock window, published them through a
 keyed shared texture, reopened that texture on a second D3D11 device, and
-presented the pixels in the packaged Settings and Production source monitors.
-No official Sony client or PS5 was connected. Process audio, Program
-composition, and the official PlayStation source remain `unavailable`.
+composed them into a 1920 × 1080 output with a bounded position/size transform,
+and presented the output in the Settings and Production monitors. No official
+Sony client or PS5 was connected. Camera/graphic layering, Preview/Program
+separation, process audio, and the official PlayStation source remain
+`unavailable`.
 
 ## Proof separation
 

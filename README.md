@@ -21,21 +21,24 @@ Current real capabilities include:
   resolution, stall, and frame-count telemetry;
 - keyed D3D11 shared-texture publication, second-device reopen, and native
   presentation inside the Settings and Production source monitors;
+- a native 1920 × 1080 one-source Program-video compositor with a validated
+  position/size transform and real composed-frame telemetry;
 - browser/Electron device preview;
 - bounded camera/microphone and display-to-MP4 proof adapters;
 - packaged Windows application shell.
 
-Program composition, real Program audio routing, vault-backed credentials,
-Twitch/Facebook destination routing, and isolated broadcast continuity are
-currently `unavailable`. The older direct camera/microphone RTMPS worker is
-disabled at the Electron boundary because it bypasses Program and does not
-meet the security contract.
+Multi-source scene composition, real Program audio routing, vault-backed
+credentials, Twitch/Facebook destination routing, and isolated broadcast
+continuity are currently `unavailable`. The older direct camera/microphone
+RTMPS worker is disabled at the Electron boundary because it bypasses Program
+and does not meet the security contract.
 
-Window capture and native shared-texture presentation currently have
-`fault-injected-real` proof against a labeled mock Remote Play window. This is
-a source monitor, not the Program compositor. The official Sony client, PS5
-source, process audio, and composed Program remain `unavailable` until those
-exact paths pass named proof runs.
+Window capture, one-source D3D11 composition, and native shared-texture
+presentation currently have `fault-injected-real` proof against a labeled mock
+Remote Play window. This is the first Program-video test path, not a complete
+Program: camera layering, graphics ownership, Preview/Program separation,
+transitions, recording, and audio are still open. The official Sony client and
+PS5 source remain `unavailable` until that exact path passes a named proof run.
 
 Read these before implementation:
 

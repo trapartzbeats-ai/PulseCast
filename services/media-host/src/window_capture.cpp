@@ -1,4 +1,5 @@
 #include "pulsecast/window_capture.hpp"
+#include "pulsecast/program_compositor.hpp"
 #include "pulsecast/shared_texture_preview.hpp"
 
 #include <d3d11.h>
@@ -164,12 +165,14 @@ class WindowCapture::Impl {
     item_ = nullptr;
     device_ = nullptr;
     const auto preview = preview_.Detach();
+    const auto program = compositor_.Reset();
 
     std::scoped_lock lock(mutex_);
     if (snapshot_.state != CaptureState::idle && snapshot_.state != CaptureState::failed) {
       snapshot_.state = CaptureState::stopped;
     }
     snapshot_.preview = preview;
+    snapshot_.program = program;
     return snapshot_;
   }
 
@@ -186,6 +189,13 @@ class WindowCapture::Impl {
     const auto preview = preview_.Detach();
     std::scoped_lock lock(mutex_);
     snapshot_.preview = preview;
+    return snapshot_;
+  }
+
+  CaptureSnapshot SetProgramTransform(const ProgramTransform& transform) {
+    const auto program = compositor_.SetTransform(transform);
+    std::scoped_lock lock(mutex_);
+    snapshot_.program = program;
     return snapshot_;
   }
 
@@ -230,7 +240,8 @@ class WindowCapture::Impl {
       winrt::com_ptr<ID3D11Texture2D> source_texture;
       winrt::check_hresult(surface_access->GetInterface(
           __uuidof(ID3D11Texture2D), source_texture.put_void()));
-      const auto preview = preview_.Present(source_texture.get());
+      const auto program_frame = compositor_.Compose(source_texture.get());
+      const auto preview = preview_.Present(program_frame.texture.get());
       std::scoped_lock lock(mutex_);
       ++snapshot_.frame_count;
       snapshot_.width = static_cast<std::uint32_t>(size.Width);
@@ -238,6 +249,7 @@ class WindowCapture::Impl {
       snapshot_.last_frame_monotonic_ms = MonotonicMilliseconds();
       snapshot_.state = CaptureState::active;
       snapshot_.error.clear();
+      snapshot_.program = program_frame.snapshot;
       snapshot_.preview = preview;
     } catch (const winrt::hresult_error& error) {
       std::scoped_lock lock(mutex_);
@@ -253,6 +265,7 @@ class WindowCapture::Impl {
   wgc::Direct3D11CaptureFramePool frame_pool_{nullptr};
   wgc::GraphicsCaptureSession session_{nullptr};
   winrt::event_token frame_arrived_token_{};
+  ProgramCompositor compositor_;
   SharedTexturePreview preview_;
 };
 
@@ -275,6 +288,10 @@ CaptureSnapshot WindowCapture::AttachPreview(
 
 CaptureSnapshot WindowCapture::DetachPreview() {
   return impl_->DetachPreview();
+}
+
+CaptureSnapshot WindowCapture::SetProgramTransform(const ProgramTransform& transform) {
+  return impl_->SetProgramTransform(transform);
 }
 
 CaptureSnapshot WindowCapture::Snapshot() const {

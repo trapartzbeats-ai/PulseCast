@@ -1,0 +1,10 @@
+{
+  "schema": "pulsecast.ui-layout-rects/v1",
+  "viewport": { "width": 1440, "height": 900 },
+  "productionCanvas": { "x": 267, "y": 219, "width": 850, "height": 334 },
+  "programFrame": { "x": 336, "y": 250, "width": 712, "height": 303 },
+  "nativeProgramSurface": { "x": 404, "y": 306, "width": 576, "height": 228 },
+  "mixerBoundaryY": 551,
+  "settingsTransformPanel": { "x": 25, "y": 647, "width": 1360, "height": 145 },
+  "notes": "Final Production native surface bottom is above the mixer boundary; coordinates are window-relative visual measurements."
+}

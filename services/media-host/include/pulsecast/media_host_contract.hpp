@@ -11,7 +11,7 @@ inline constexpr std::string_view kAdapterName = "MediaHostProcessAdapter/v1";
 inline constexpr std::string_view kProbeSchema = "pulsecast.media-host-probe/v1";
 inline constexpr std::string_view kCommandSchema = "pulsecast.media-host-command/v1";
 inline constexpr std::string_view kCaptureSchema = "pulsecast.media-host-capture/v1";
-inline constexpr std::string_view kVersion = "0.3.0";
+inline constexpr std::string_view kVersion = "0.4.0";
 
 struct WindowBounds {
   std::int32_t x{};
@@ -54,6 +54,29 @@ struct PreviewSnapshot {
   std::string error;
 };
 
+enum class ProgramState {
+  idle,
+  waiting,
+  active,
+  failed,
+};
+
+struct ProgramTransform {
+  std::int32_t x{160};
+  std::int32_t y{90};
+  std::int32_t width{1600};
+  std::int32_t height{900};
+};
+
+struct ProgramSnapshot {
+  ProgramState state{ProgramState::idle};
+  std::uint64_t composed_frame_count{};
+  std::uint32_t output_width{1920};
+  std::uint32_t output_height{1080};
+  ProgramTransform transform;
+  std::string error;
+};
+
 struct CaptureSnapshot {
   CaptureState state{CaptureState::idle};
   std::string window_id;
@@ -62,6 +85,7 @@ struct CaptureSnapshot {
   std::uint32_t height{};
   std::uint64_t last_frame_monotonic_ms{};
   std::string error;
+  ProgramSnapshot program;
   PreviewSnapshot preview;
 };
 
@@ -74,6 +98,7 @@ std::string BuildProbeJson(
 std::string BuildCaptureJson(const CaptureSnapshot& capture);
 std::string CaptureStateName(CaptureState state);
 std::string PreviewStateName(PreviewState state);
+std::string ProgramStateName(ProgramState state);
 std::string ExtractCommandString(std::string_view input, std::string_view property);
 std::int32_t ExtractCommandInteger(std::string_view input, std::string_view property);
 bool IsProbeCommand(std::string_view input);
@@ -83,5 +108,6 @@ bool IsCaptureStatusCommand(std::string_view input);
 bool IsCaptureStopCommand(std::string_view input);
 bool IsPreviewAttachCommand(std::string_view input);
 bool IsPreviewDetachCommand(std::string_view input);
+bool IsProgramTransformCommand(std::string_view input);
 
 }  // namespace pulsecast::media_host

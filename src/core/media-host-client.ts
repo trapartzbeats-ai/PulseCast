@@ -1,5 +1,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import type { MediaHostCapture, MediaHostPreviewBounds, MediaHostProbe } from "../shared/contracts";
+import type {
+  MediaHostCapture,
+  MediaHostPreviewBounds,
+  MediaHostProbe,
+  MediaHostProgramTransform,
+} from "../shared/contracts";
 import { getMediaHostPath, parseMediaHostCapture, parseMediaHostProbe } from "./media-host";
 
 interface PendingResponse {
@@ -68,6 +73,12 @@ export class MediaHostClient {
     return parseMediaHostCapture(await this.request({ type: "preview-detach" }));
   }
 
+  async setProgramTransform(transform: MediaHostProgramTransform): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(
+      await this.request({ type: "program-transform-set", ...transform }),
+    );
+  }
+
   async stop(): Promise<void> {
     const child = this.child;
     if (!child) return;
@@ -98,7 +109,8 @@ export class MediaHostClient {
       | { type: "probe" | "capture-status" | "capture-stop" | "shutdown" }
       | { type: "capture-start"; windowId: string }
       | ({ type: "preview-attach"; parentWindowId: string } & MediaHostPreviewBounds)
-      | { type: "preview-detach" },
+      | { type: "preview-detach" }
+      | ({ type: "program-transform-set" } & MediaHostProgramTransform),
     timeoutMs = 5_000,
   ): Promise<string> {
     this.start();

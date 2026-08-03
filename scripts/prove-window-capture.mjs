@@ -95,6 +95,16 @@ try {
 
   const started = await command({ type: "capture-start", windowId: candidate.windowId });
   if (started.state === "failed") throw new Error(started.error || "Capture failed to start.");
+  const transformed = await command({
+    type: "program-transform-set",
+    x: 240,
+    y: 135,
+    width: 1440,
+    height: 810,
+  });
+  if (transformed.program.state === "failed") {
+    throw new Error(transformed.program.error || "Program transform failed.");
+  }
   const attached = await command({
     type: "preview-attach",
     parentWindowId: previewParentWindowId,
@@ -112,6 +122,8 @@ try {
     if (
       finalCapture.state === "active" &&
       finalCapture.frameCount > 0 &&
+      finalCapture.program.state === "active" &&
+      finalCapture.program.composedFrameCount > 0 &&
       finalCapture.preview.state === "active" &&
       finalCapture.preview.presentedFrameCount > 0
     ) {
@@ -126,10 +138,18 @@ try {
     !finalCapture ||
     finalCapture.state !== "active" ||
     finalCapture.frameCount < 1 ||
+    finalCapture.program.state !== "active" ||
+    finalCapture.program.composedFrameCount < 1 ||
+    finalCapture.program.outputWidth !== 1920 ||
+    finalCapture.program.outputHeight !== 1080 ||
+    finalCapture.program.transform.x !== 240 ||
+    finalCapture.program.transform.y !== 135 ||
+    finalCapture.program.transform.width !== 1440 ||
+    finalCapture.program.transform.height !== 810 ||
     finalCapture.preview.state !== "active" ||
     finalCapture.preview.presentedFrameCount < 1
   ) {
-    throw new Error("The shared-texture preview did not present a real captured frame.");
+    throw new Error("The Program compositor did not compose and present a real captured frame.");
   }
 
   await command({ type: "preview-detach" });

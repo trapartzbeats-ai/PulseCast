@@ -5,7 +5,11 @@ import { probeAdapters, runNativeCaptureProof } from "../core/adapters";
 import { MediaHostClient } from "../core/media-host-client";
 import { FileShowRepository } from "../core/repository";
 import { CoreRuntime } from "../core/runtime";
-import type { CommandEnvelope, MediaHostPreviewBounds } from "../shared/contracts";
+import type {
+  CommandEnvelope,
+  MediaHostPreviewBounds,
+  MediaHostProgramTransform,
+} from "../shared/contracts";
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
 
 let mainWindow: BrowserWindow | null = null;
@@ -109,6 +113,13 @@ function registerIpc(): void {
         mainWindowId(window),
         physicalPreviewBounds(window, bounds),
       );
+    },
+  );
+  ipcMain.handle(
+    "pulsecast:media-host:program-transform-set",
+    (_event, transform: MediaHostProgramTransform) => {
+      if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+      return mediaHostClient.setProgramTransform(transform);
     },
   );
   ipcMain.handle(

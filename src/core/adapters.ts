@@ -83,9 +83,9 @@ export async function probeAdapters(mediaHostOverride?: {
       version: mediaHost.available ? mediaHost.probe.version : null,
       detail: mediaHost.available
         ? mediaHost.probe.capture.state === "active"
-          ? mediaHost.probe.capture.preview.state === "active"
-            ? `Native shared-texture preview is active at ${mediaHost.probe.capture.width} × ${mediaHost.probe.capture.height} with ${mediaHost.probe.capture.preview.presentedFrameCount} presented frame(s). Process audio remains unavailable.`
-            : `Real Windows Graphics Capture is active at ${mediaHost.probe.capture.width} × ${mediaHost.probe.capture.height} with ${mediaHost.probe.capture.frameCount} frame(s). Native presentation is waiting; process audio remains unavailable.`
+          ? mediaHost.probe.capture.program.state === "active"
+            ? `Native 1920 × 1080 Program video composition is active with ${mediaHost.probe.capture.program.composedFrameCount} composed frame(s) and ${mediaHost.probe.capture.preview.presentedFrameCount} presented frame(s). Camera layering and Program audio remain unavailable.`
+            : `Real Windows Graphics Capture is active at ${mediaHost.probe.capture.width} × ${mediaHost.probe.capture.height} with ${mediaHost.probe.capture.frameCount} frame(s). Program composition is waiting; process audio remains unavailable.`
           : mediaHost.probe.remotePlay.candidateCount > 0
             ? `Real Windows discovery found ${mediaHost.probe.remotePlay.candidateCount} PS Remote Play window candidate(s). Select one to start frame capture; process audio remains unavailable.`
             : "Real Windows discovery and capture are ready; no PS Remote Play window is currently detected. Process audio remains unavailable."
@@ -97,6 +97,9 @@ export async function probeAdapters(mediaHostOverride?: {
             `${mediaHost.probe.remotePlay.candidateCount} Remote Play candidate(s)`,
             "Windows Graphics Capture ready",
             `${mediaHost.probe.capture.frameCount} captured frame(s)`,
+            `Program compositor ${mediaHost.probe.capture.program.state}`,
+            `${mediaHost.probe.capture.program.composedFrameCount} composed frame(s)`,
+            `${mediaHost.probe.capture.program.outputWidth} × ${mediaHost.probe.capture.program.outputHeight} output`,
             `shared-texture preview ${mediaHost.probe.capture.preview.state}`,
             `${mediaHost.probe.capture.preview.presentedFrameCount} presented frame(s)`,
             "process audio unavailable",

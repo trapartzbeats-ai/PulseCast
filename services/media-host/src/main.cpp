@@ -80,6 +80,18 @@ int Serve() {
                 << std::endl;
       continue;
     }
+    if (pulsecast::media_host::IsProgramTransformCommand(input)) {
+      const auto transform = pulsecast::media_host::ProgramTransform{
+          .x = pulsecast::media_host::ExtractCommandInteger(input, "x"),
+          .y = pulsecast::media_host::ExtractCommandInteger(input, "y"),
+          .width = pulsecast::media_host::ExtractCommandInteger(input, "width"),
+          .height = pulsecast::media_host::ExtractCommandInteger(input, "height"),
+      };
+      std::cout << pulsecast::media_host::BuildCaptureJson(
+                       capture.SetProgramTransform(transform))
+                << std::endl;
+      continue;
+    }
     if (pulsecast::media_host::IsShutdownCommand(input)) {
       capture.Stop();
       std::cout << "{\"schema\":\"pulsecast.media-host-event/v1\","

@@ -1,0 +1,22 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "title": "One-source native Program-video compositor",
+  "proofType": "fault-injected-real",
+  "requirements": [
+    "Settings reports capture, composition, output dimensions, and transform separately",
+    "Settings exposes x, y, width, and height controls for the native transform",
+    "Production labels the surface as PROGRAM VIDEO TEST OUTPUT",
+    "The native child surface stays completely inside the Production canvas",
+    "The output visibly includes the transform border around the source",
+    "The UI states that camera layering, Program audio, and destination output are unavailable"
+  ],
+  "excluded": [
+    "official Sony Remote Play client",
+    "connected PS5",
+    "multi-source composition",
+    "Preview and Program separation",
+    "Program recording",
+    "Program audio",
+    "Twitch or Facebook output"
+  ]
+}

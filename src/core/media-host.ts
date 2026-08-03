@@ -22,6 +22,20 @@ const mediaHostCaptureSchema = z.object({
   height: z.number().int().nonnegative(),
   lastFrameMonotonicMs: z.number().int().nonnegative(),
   error: z.string().nullable(),
+  program: z.object({
+    proofType: z.enum(["real", "unavailable"]),
+    state: z.enum(["idle", "waiting", "active", "failed"]),
+    composedFrameCount: z.number().int().nonnegative(),
+    outputWidth: z.number().int().positive(),
+    outputHeight: z.number().int().positive(),
+    transform: z.object({
+      x: z.number().int().nonnegative(),
+      y: z.number().int().nonnegative(),
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+    }),
+    error: z.string().nullable(),
+  }),
   preview: z.object({
     proofType: z.enum(["real", "unavailable"]),
     state: z.enum(["detached", "waiting", "active", "failed"]),
@@ -101,7 +115,8 @@ export function parseMediaHostProbe(value: string): MediaHostProbe {
     const implemented =
       capability.id === "window-discovery" ||
       capability.id === "window-capture" ||
-      capability.id === "shared-texture-preview";
+      capability.id === "shared-texture-preview" ||
+      capability.id === "program-composition";
     if (
       (implemented && (capability.proofType !== "real" || capability.state !== "ready")) ||
       (!implemented &&
@@ -124,6 +139,22 @@ function validateMediaHostCapture(capture: MediaHostCapture): MediaHostCapture {
   }
   if (capture.state === "active" && !hasFrames) {
     throw new Error("Media Host cannot report active capture without a real frame.");
+  }
+  const hasProgramFrames = capture.program.composedFrameCount > 0;
+  if (
+    (hasProgramFrames && capture.program.proofType !== "real") ||
+    (!hasProgramFrames && capture.program.proofType !== "unavailable")
+  ) {
+    throw new Error("Media Host Program proof label does not match its composed frame count.");
+  }
+  if (capture.program.state === "active" && !hasProgramFrames) {
+    throw new Error("Media Host cannot report active Program video without a composed frame.");
+  }
+  if (
+    capture.program.transform.x + capture.program.transform.width > capture.program.outputWidth ||
+    capture.program.transform.y + capture.program.transform.height > capture.program.outputHeight
+  ) {
+    throw new Error("Media Host Program transform exceeds its output canvas.");
   }
   const hasPresentedFrames = capture.preview.presentedFrameCount > 0;
   if (

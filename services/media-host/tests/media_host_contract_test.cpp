@@ -26,6 +26,7 @@ int main() {
   using pulsecast::media_host::ExtractCommandString;
   using pulsecast::media_host::IsCaptureStartCommand;
   using pulsecast::media_host::IsPreviewAttachCommand;
+  using pulsecast::media_host::IsProgramTransformCommand;
   using pulsecast::media_host::IsProbeCommand;
   using pulsecast::media_host::IsRemotePlayCandidate;
   using pulsecast::media_host::IsShutdownCommand;
@@ -55,6 +56,11 @@ int main() {
   Expect(
       pulsecast::media_host::ExtractCommandInteger(preview_command, "width") == 640,
       "extract preview width");
+  const std::string transform_command =
+      "{\"schema\":\"pulsecast.media-host-command/v1\","
+      "\"type\":\"program-transform-set\",\"x\":160,\"y\":90,"
+      "\"width\":1600,\"height\":900}";
+  Expect(IsProgramTransformCommand(transform_command), "versioned Program transform command");
 
   const std::vector<RemotePlayWindow> windows{{
       .window_id = "0x1234",
@@ -71,6 +77,9 @@ int main() {
   Expect(json.find("\"window-capture\",\"proofType\":\"real\"") !=
              std::string::npos,
          "real Windows Graphics Capture implementation");
+  Expect(json.find("\"program-composition\",\"proofType\":\"real\"") !=
+             std::string::npos,
+         "real Program compositor implementation");
   Expect(json.find("\"candidateCount\":1") != std::string::npos, "candidate count");
   const auto active_capture = BuildCaptureJson(CaptureSnapshot{
       .state = CaptureState::active,
@@ -79,9 +88,19 @@ int main() {
       .width = 1280,
       .height = 720,
       .last_frame_monotonic_ms = 99,
+      .program = pulsecast::media_host::ProgramSnapshot{
+          .state = pulsecast::media_host::ProgramState::active,
+          .composed_frame_count = 12,
+      },
   });
   Expect(active_capture.find("\"proofType\":\"real\"") != std::string::npos, "real frames");
   Expect(active_capture.find("\"frameCount\":12") != std::string::npos, "frame telemetry");
+  Expect(
+      active_capture.find("\"composedFrameCount\":12") != std::string::npos,
+      "Program frame telemetry");
+  Expect(
+      active_capture.find("\"outputWidth\":1920") != std::string::npos,
+      "Program output width");
   Expect(
       active_capture.find("\"preview\":{\"proofType\":\"unavailable\"") !=
           std::string::npos,

@@ -13,7 +13,7 @@ function probe(candidateCount = 0) {
       { id: "window-capture", proofType: "real", state: "ready" },
       { id: "shared-texture-preview", proofType: "real", state: "ready" },
       { id: "process-audio", proofType: "unavailable", state: "unavailable" },
-      { id: "program-composition", proofType: "unavailable", state: "unavailable" },
+      { id: "program-composition", proofType: "real", state: "ready" },
     ],
     remotePlay: {
       state: candidateCount > 0 ? "detected" : "not-detected",
@@ -42,6 +42,15 @@ function probe(candidateCount = 0) {
       height: 0,
       lastFrameMonotonicMs: 0,
       error: null,
+      program: {
+        proofType: "unavailable",
+        state: "idle",
+        composedFrameCount: 0,
+        outputWidth: 1920,
+        outputHeight: 1080,
+        transform: { x: 160, y: 90, width: 1600, height: 900 },
+        error: null,
+      },
       preview: {
         proofType: "unavailable",
         state: "detached",
@@ -104,6 +113,15 @@ describe("Media Host process contract", () => {
           height: 720,
           lastFrameMonotonicMs: 0,
           error: null,
+          program: {
+            proofType: "unavailable",
+            state: "idle",
+            composedFrameCount: 0,
+            outputWidth: 1920,
+            outputHeight: 1080,
+            transform: { x: 160, y: 90, width: 1600, height: 900 },
+            error: null,
+          },
           preview: {
             proofType: "unavailable",
             state: "detached",
@@ -129,5 +147,29 @@ describe("Media Host process contract", () => {
     expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow(
       "active preview without a presented frame",
     );
+  });
+
+  it("requires a composed frame before Program becomes active", () => {
+    const invalid = JSON.parse(probe()) as {
+      capture: {
+        program: { state: string; proofType: string };
+      };
+    };
+    invalid.capture.program.state = "active";
+    invalid.capture.program.proofType = "unavailable";
+    expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow(
+      "active Program video without a composed frame",
+    );
+  });
+
+  it("rejects a Program transform outside the output canvas", () => {
+    const invalid = JSON.parse(probe()) as {
+      capture: {
+        program: { transform: { x: number; width: number } };
+      };
+    };
+    invalid.capture.program.transform.x = 1800;
+    invalid.capture.program.transform.width = 300;
+    expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow("exceeds its output canvas");
   });
 });

@@ -17,16 +17,17 @@ Electron main process
     ├── Windows Graphics Capture + D3D11 frame acquisition
     ├── capture lifecycle, resolution, frame, and stall telemetry
     ├── keyed shared-texture publisher + second-device consumer
-    ├── child-HWND source-preview presentation
+    ├── 1920 × 1080 one-source D3D11 compositor + transform
+    ├── child-HWND Program-video test presentation
     ├── process audio: unavailable
-    └── Program composition: unavailable
+    └── multi-source scene composition: unavailable
 
 Electron renderer
 ├── retained Foundation workspace
 ├── one application-level device controller
 ├── browser camera/mic and display preview
 ├── Pulse Core graphic owner
-├── native Settings and Production source-monitor bounds
+├── native Settings and Production Program-video bounds
 ├── simulated audio routing
 └── mock Foundation destinations
 ```
@@ -36,13 +37,16 @@ preview is not the Program compositor. The Media Host is now a real native and
 packaged process boundary. It now opens real Windows Graphics Capture sessions
 and consumes native D3D11 frames, but only the labeled mock-window path has
 been proven. The Media Host now copies capture frames into a keyed NT-handle
-shared texture, reopens it on a second D3D11 device, and presents it through a
-native child HWND parented to Electron. Renderer JSON carries only validated
-bounds and telemetry; raw pixels remain native. The surface is a source
-monitor, not the Program compositor, and only the labeled mock-window path has
-been proven. Official Sony Remote Play, a connected PS5, process audio, and
-Program composition remain open. The FFmpeg DirectShow worker is a bounded
-proof adapter and its network start IPC is disabled.
+1920 × 1080 render-target texture, draws the captured source through a
+validated position/size transform, publishes the output through a keyed
+NT-handle shared texture, reopens it on a second D3D11 device, and presents it
+through a native child HWND parented to Electron. Renderer JSON carries only
+validated transforms, bounds, and telemetry; raw pixels remain native. This is
+a one-source Program-video test path, not a complete Program scene. Only the
+labeled mock-window path has been proven. Official Sony Remote Play, a
+connected PS5, camera/graphic layering, Preview/Program separation, process
+audio, transitions, and recording remain open. The FFmpeg DirectShow worker is
+a bounded proof adapter and its network start IPC is disabled.
 
 ## Required product architecture
 

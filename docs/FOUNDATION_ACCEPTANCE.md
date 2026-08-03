@@ -17,7 +17,8 @@ is governed by `PULSECAST_MASTER_BLUEPRINT.md` and
 | Display-to-MP4 adapter | real | Bounded diagnostic |
 | Audio route controls | simulated | No real sample binding |
 | Foundation destination tray | mock | No transport binding |
-| Program compositor | unavailable | Gate 1 |
+| One-source Program-video compositor | fault-injected-real | Native 1920 × 1080 transform proof; not a full scene |
+| Multi-source Program compositor | unavailable | Gate 1 |
 | Program audio graph | unavailable | Gate 2 |
 | Twitch/Facebook routing | unavailable | Gate 4 |
 | Credential vault | unavailable | Gate 4 |

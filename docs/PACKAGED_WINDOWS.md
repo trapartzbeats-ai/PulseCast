@@ -46,3 +46,12 @@ installer behavior, or a production stream.
 
 Installer, portable, upgrade, uninstall, media, and routing proof remain
 separate release gates.
+
+Build `build-20260803-153547` adds the first native Program-video test path.
+The packaged Media Host composes the captured source into a 1920 × 1080 D3D11
+render target through a validated position/size transform, then publishes and
+presents that composed texture. The Settings controls expose transform and
+composed-frame telemetry; the Production monitor contains the native child
+surface inside the canvas without crossing into the mixer. This is
+`fault-injected-real` proof against the labeled mock Remote Play fixture. The
+build is directory-only; installer and portable artifacts were not promoted.

@@ -23,6 +23,7 @@ target_compile_definitions(PulseCastMediaHostContract PUBLIC
 
 add_executable(PulseCastMediaHost
   src/main.cpp
+  src/program_compositor.cpp
   src/shared_texture_preview.cpp
   src/window_capture.cpp
   src/window_discovery.cpp
@@ -30,6 +31,7 @@ add_executable(PulseCastMediaHost
 target_link_libraries(PulseCastMediaHost PRIVATE
   PulseCastMediaHostContract
   d3d11
+  d3dcompiler
   dxgi
   windowsapp
   user32

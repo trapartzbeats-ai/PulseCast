@@ -1,0 +1,15 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Gate 1 one-source native Program compositor",
+  "capturedFrom": "release-reboot/build-20260803-153547/win-unpacked/PulseCast Studio.exe",
+  "runtime": "packaged Electron plus Media Host 0.4.0 and labeled mock Remote Play fixture",
+  "capturedAt": "2026-08-03T20:39:00Z",
+  "viewport": "1440x900",
+  "proofType": "fault-injected-real",
+  "screenshots": [
+    "screenshot_default.png",
+    "screenshot_states/production-contained-program-output.png",
+    "screenshot_states/settings-compositor-controls.png"
+  ],
+  "status": "PASS"
+}

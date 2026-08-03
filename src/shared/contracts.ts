@@ -281,7 +281,25 @@ export interface MediaHostCapture {
   height: number;
   lastFrameMonotonicMs: number;
   error: string | null;
+  program: MediaHostProgram;
   preview: MediaHostPreview;
+}
+
+export interface MediaHostProgram {
+  proofType: "real" | "unavailable";
+  state: "idle" | "waiting" | "active" | "failed";
+  composedFrameCount: number;
+  outputWidth: number;
+  outputHeight: number;
+  transform: MediaHostProgramTransform;
+  error: string | null;
+}
+
+export interface MediaHostProgramTransform {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface MediaHostPreview {
@@ -461,6 +479,7 @@ export interface PulseCastBridge {
   getMediaHostCapture(): Promise<MediaHostCapture>;
   stopMediaHostCapture(): Promise<MediaHostCapture>;
   setMediaHostPreview(bounds: MediaHostPreviewBounds | null): Promise<MediaHostCapture>;
+  setMediaHostProgramTransform(transform: MediaHostProgramTransform): Promise<MediaHostCapture>;
   runNativeCaptureProof(options?: {
     durationMs?: number;
     fps?: 30 | 60;

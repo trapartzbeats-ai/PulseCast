@@ -133,6 +133,9 @@ const browserBridge: PulseCastBridge = {
   async setMediaHostPreview() {
     throw new Error("Open the Electron app to present the native shared-texture preview.");
   },
+  async setMediaHostProgramTransform() {
+    throw new Error("Open the Electron app to transform native Program video.");
+  },
   async runNativeCaptureProof(): Promise<NativeCaptureProof> {
     return {
       proofType: "real",

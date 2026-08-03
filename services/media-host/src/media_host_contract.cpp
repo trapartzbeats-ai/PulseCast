@@ -91,7 +91,7 @@ std::string BuildProbeJson(
          << "{\"id\":\"window-capture\",\"proofType\":\"real\",\"state\":\"ready\"},"
          << "{\"id\":\"shared-texture-preview\",\"proofType\":\"real\",\"state\":\"ready\"},"
          << "{\"id\":\"process-audio\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"},"
-         << "{\"id\":\"program-composition\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"}],"
+         << "{\"id\":\"program-composition\",\"proofType\":\"real\",\"state\":\"ready\"}],"
          << "\"remotePlay\":{\"state\":\""
          << (candidates.empty() ? "not-detected" : "detected")
          << "\",\"candidateCount\":" << candidates.size() << "},"
@@ -149,6 +149,20 @@ std::string PreviewStateName(PreviewState state) {
   return "failed";
 }
 
+std::string ProgramStateName(ProgramState state) {
+  switch (state) {
+    case ProgramState::idle:
+      return "idle";
+    case ProgramState::waiting:
+      return "waiting";
+    case ProgramState::active:
+      return "active";
+    case ProgramState::failed:
+      return "failed";
+  }
+  return "failed";
+}
+
 std::string BuildCaptureJson(const CaptureSnapshot& capture) {
   const auto has_frames = capture.frame_count > 0;
   std::ostringstream output;
@@ -163,6 +177,21 @@ std::string BuildCaptureJson(const CaptureSnapshot& capture) {
          << ",\"lastFrameMonotonicMs\":" << capture.last_frame_monotonic_ms
          << ",\"error\":"
          << (capture.error.empty() ? "null" : "\"" + JsonEscape(capture.error) + "\"")
+         << ",\"program\":{\"proofType\":\""
+         << (capture.program.composed_frame_count > 0 ? "real" : "unavailable") << "\","
+         << "\"state\":\"" << ProgramStateName(capture.program.state) << "\","
+         << "\"composedFrameCount\":" << capture.program.composed_frame_count << ','
+         << "\"outputWidth\":" << capture.program.output_width << ','
+         << "\"outputHeight\":" << capture.program.output_height << ','
+         << "\"transform\":{\"x\":" << capture.program.transform.x
+         << ",\"y\":" << capture.program.transform.y
+         << ",\"width\":" << capture.program.transform.width
+         << ",\"height\":" << capture.program.transform.height << "},"
+         << "\"error\":"
+         << (capture.program.error.empty()
+                 ? "null"
+                 : "\"" + JsonEscape(capture.program.error) + "\"")
+         << "}"
          << ",\"preview\":{\"proofType\":\""
          << (capture.preview.presented_frame_count > 0 ? "real" : "unavailable") << "\","
          << "\"state\":\"" << PreviewStateName(capture.preview.state) << "\","
@@ -250,6 +279,10 @@ bool IsPreviewAttachCommand(std::string_view input) {
 
 bool IsPreviewDetachCommand(std::string_view input) {
   return IsVersionedCommand(input, "preview-detach");
+}
+
+bool IsProgramTransformCommand(std::string_view input) {
+  return IsVersionedCommand(input, "program-transform-set");
 }
 
 }  // namespace pulsecast::media_host
