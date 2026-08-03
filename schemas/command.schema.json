@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulsecast.local/schemas/command.schema.json",
+  "title": "PulseCast Command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "commandId",
+    "idempotencyKey",
+    "showId",
+    "baseRevision",
+    "kind",
+    "issuedAt",
+    "actor",
+    "correlationId",
+    "causationId",
+    "mode",
+    "payload"
+  ],
+  "properties": {
+    "schema": { "const": "pulsecast.command/v1" },
+    "commandId": { "type": "string", "minLength": 1 },
+    "idempotencyKey": { "type": "string", "minLength": 1 },
+    "showId": { "type": "string", "minLength": 1 },
+    "baseRevision": { "type": "integer", "minimum": 0 },
+    "kind": {
+      "enum": [
+        "scene.activate",
+        "source.move",
+        "source.select",
+        "audio.route",
+        "audio.gain",
+        "audio.mute",
+        "audio.health",
+        "destination.state",
+        "support.receive",
+        "runtime.safe-mode"
+      ]
+    },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "role"],
+      "properties": {
+        "kind": {
+          "enum": ["user", "assistant", "automation", "system"]
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 }
+      }
+    },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "causationId": { "type": ["string", "null"] },
+    "mode": { "enum": ["preview", "execute"] },
+    "payload": { "type": "object" }
+  }
+}
+

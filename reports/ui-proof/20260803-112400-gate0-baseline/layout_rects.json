@@ -1,0 +1,16 @@
+{
+  "schema": "pulsecast.ui-layout-observation/v1",
+  "viewport": { "x": 0, "y": 0, "width": 1440, "height": 900 },
+  "observedFrom": "screenshot_default.png",
+  "regions": [
+    { "name": "truth banner", "x": 0, "y": 0, "width": 1440, "height": 35 },
+    { "name": "workspace header", "x": 0, "y": 35, "width": 1440, "height": 55 },
+    { "name": "rundown", "x": 0, "y": 90, "width": 228, "height": 451 },
+    { "name": "preview", "x": 228, "y": 90, "width": 942, "height": 451 },
+    { "name": "inspector", "x": 1170, "y": 90, "width": 270, "height": 451 },
+    { "name": "audio", "x": 0, "y": 541, "width": 1440, "height": 207 },
+    { "name": "lower dock", "x": 0, "y": 748, "width": 1440, "height": 102 },
+    { "name": "status", "x": 0, "y": 850, "width": 1440, "height": 50 }
+  ],
+  "note": "Pixel observations are for the retained Gate 0 layout only."
+}

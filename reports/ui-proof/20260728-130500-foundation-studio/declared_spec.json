@@ -1,0 +1,39 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "surface": "Foundation Studio",
+  "primaryViewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "compactViewport": {
+    "width": 1024,
+    "height": 720
+  },
+  "requiredRegions": [
+    "truth banner",
+    "workspace header",
+    "rundown",
+    "preview stage",
+    "source inspector",
+    "audio routing",
+    "mock destination health",
+    "recovery status",
+    "diagnostics"
+  ],
+  "requiredStates": [
+    "show gate",
+    "studio default",
+    "mock destination failure",
+    "diagnostics drawer",
+    "recovery gate",
+    "compact studio"
+  ],
+  "truthRules": [
+    "No production Go Live control",
+    "Simulated pixels and audio are labeled",
+    "Mock destinations are labeled",
+    "Native recording proof is separate from live capture",
+    "Open Phase 0 gates remain visible"
+  ]
+}
+

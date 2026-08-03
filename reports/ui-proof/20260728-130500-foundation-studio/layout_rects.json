@@ -1,0 +1,55 @@
+{
+  "schema": "pulsecast.ui-layout-rects/v1",
+  "primary": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "document": {
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "clientHeight": 900,
+      "scrollHeight": 900,
+      "horizontalOverflow": false,
+      "verticalOverflow": false
+    },
+    "rects": {
+      "studioGrid": { "x": 0, "y": 91.140625, "width": 1440, "height": 450.859375, "right": 1440, "bottom": 542 },
+      "rundown": { "x": 0, "y": 91.140625, "width": 228, "height": 449.859375, "right": 228, "bottom": 541 },
+      "stage": { "x": 228, "y": 91.140625, "width": 942, "height": 449.859375, "right": 1170, "bottom": 541 },
+      "inspector": { "x": 1170, "y": 91.140625, "width": 270, "height": 449.859375, "right": 1440, "bottom": 541 },
+      "audio": { "x": 0, "y": 542, "width": 1440, "height": 206, "right": 1440, "bottom": 748 },
+      "bottomDock": { "x": 0, "y": 748, "width": 1440, "height": 102, "right": 1440, "bottom": 850 },
+      "destinations": { "x": 0, "y": 748, "width": 692.296875, "height": 101, "right": 692.296875, "bottom": 849 },
+      "status": { "x": 0, "y": 850, "width": 1440, "height": 50, "right": 1440, "bottom": 900 }
+    },
+    "assertions": {
+      "mainColumnsShareBounds": true,
+      "studioGridEndsBeforeAudio": true,
+      "audioEndsBeforeBottomDock": true,
+      "bottomDockEndsBeforeStatus": true,
+      "statusEndsAtViewport": true
+    }
+  },
+  "compact": {
+    "viewport": {
+      "width": 1024,
+      "height": 720
+    },
+    "document": {
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "clientHeight": 720,
+      "scrollHeight": 946,
+      "horizontalOverflow": false,
+      "verticalOverflow": true
+    },
+    "policy": "Vertical document scrolling is allowed below the fixed-desktop breakpoint; horizontal overflow is not."
+  },
+  "reducedMotion": {
+    "mediaQueryMatches": true,
+    "namedAnimationCount": 0,
+    "maxAnimationSeconds": 0.000001,
+    "maxTransitionSeconds": 0.000001
+  }
+}

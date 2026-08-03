@@ -1,0 +1,16 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "purpose": "Verify Gate 0 truth and runtime repair, not certify Release 1.0 UX",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "requirements": [
+    "PulseCast Studio product title and 0.3 reboot identity",
+    "No production output claim",
+    "No destination credential inputs",
+    "Twitch and Facebook routing visibly unavailable",
+    "Program and vault gates stated",
+    "No invalid nested interactive control error"
+  ]
+}

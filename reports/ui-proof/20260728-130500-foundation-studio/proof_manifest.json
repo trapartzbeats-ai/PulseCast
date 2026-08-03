@@ -1,0 +1,30 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Foundation Studio",
+  "capturedFrom": "http://127.0.0.1:5173",
+  "runtime": "real Vite renderer in Chrome via Playwright CLI",
+  "capturedAt": "2026-07-28T18:25:00Z",
+  "screenshots": [
+    "screenshot_gate.png",
+    "screenshot_default.png",
+    "screenshot_states/destination_failure.png",
+    "screenshot_states/diagnostics.png",
+    "screenshot_states/recovery.png",
+    "screenshot_states/compact_1024x720.png"
+  ],
+  "verification": {
+    "primaryViewport": "1440x900, no document overflow",
+    "compactViewport": "1024x720, no horizontal overflow",
+    "console": "0 errors, 0 warnings in a clean Chrome session",
+    "reducedMotion": "matched; no named animations; maximum duration 0.000001 seconds",
+    "interactionStates": [
+      "active cue",
+      "disabled planned workspaces",
+      "empty support event",
+      "independent destination failure",
+      "diagnostics",
+      "recovery"
+    ]
+  },
+  "status": "CERTIFIED"
+}

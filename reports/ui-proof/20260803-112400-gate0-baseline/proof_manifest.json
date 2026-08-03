@@ -1,0 +1,15 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Gate 0 retained baseline",
+  "capturedFrom": "http://127.0.0.1:5173",
+  "runtime": "real Vite renderer in Chromium via Playwright CLI",
+  "capturedAt": "2026-08-03T16:24:00Z",
+  "viewport": "1440x900",
+  "screenshots": [
+    "screenshot_default.png",
+    "screenshot_states/gate.png",
+    "screenshot_states/settings.png"
+  ],
+  "console": "0 errors, 0 warnings; React DevTools development info only",
+  "status": "WARN"
+}

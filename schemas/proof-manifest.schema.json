@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulsecast.local/schemas/proof-manifest.schema.json",
+  "title": "PulseCast Proof Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "proofId",
+    "proofType",
+    "capability",
+    "producer",
+    "sourceRevision",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": { "const": "pulsecast.proof-manifest/v1" },
+    "proofId": { "type": "string", "minLength": 1 },
+    "proofType": {
+      "enum": [
+        "real",
+        "fault-injected-real",
+        "simulated",
+        "mock",
+        "unavailable"
+      ]
+    },
+    "capability": { "type": "string", "minLength": 1 },
+    "producer": { "type": "string", "minLength": 1 },
+    "sourceRevision": { "type": "string", "minLength": 1 },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
+

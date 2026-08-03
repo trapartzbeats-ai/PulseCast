@@ -1,0 +1,12 @@
+{
+  "schema": "pulsecast.ui-scorecard/v1",
+  "status": "WARN",
+  "scores": {
+    "runtime": "PASS",
+    "truthfulness": "PASS",
+    "desktopLayout": "PASS",
+    "interactionValidity": "PASS",
+    "responsiveCoverage": "WARN",
+    "releaseOneWorkflow": "FAIL_BINDING"
+  }
+}

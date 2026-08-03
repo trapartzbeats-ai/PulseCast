@@ -1,0 +1,24 @@
+{
+  "schema": "pulsecast.ui-scorecard/v1",
+  "surface": "Foundation Studio",
+  "status": "CERTIFIED",
+  "scale": "0-10",
+  "scores": {
+    "viewportAndOverflow": 10,
+    "sectionAndPanelBounds": 10,
+    "moduleGrouping": 9,
+    "componentAlignment": 9,
+    "spacingConsistency": 9,
+    "implementationParity": 10,
+    "stateCoverage": 9,
+    "runtimeEvidence": 10,
+    "truthfulCapabilityLabels": 10,
+    "reducedMotion": 10
+  },
+  "weightedScore": 9.6,
+  "blockingViolations": 0,
+  "warnings": [
+    "At compact width the page intentionally scrolls vertically to preserve control size.",
+    "The large Pulse runtime contributes a renderer bundle-size warning but not a UI proof failure."
+  ]
+}
