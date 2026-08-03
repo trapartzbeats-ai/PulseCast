@@ -17,6 +17,7 @@ const bridge: PulseCastBridge = {
     ipcRenderer.invoke("pulsecast:media-host:capture-start", windowId),
   getMediaHostCapture: () => ipcRenderer.invoke("pulsecast:media-host:capture-status"),
   stopMediaHostCapture: () => ipcRenderer.invoke("pulsecast:media-host:capture-stop"),
+  setMediaHostPreview: (bounds) => ipcRenderer.invoke("pulsecast:media-host:preview-set", bounds),
   runNativeCaptureProof: (options) =>
     ipcRenderer.invoke("pulsecast:run-native-capture-proof", options),
   probeRealMedia: () => ipcRenderer.invoke("pulsecast:media:probe"),

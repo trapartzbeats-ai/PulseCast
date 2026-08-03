@@ -15,6 +15,10 @@ class WindowCapture {
 
   CaptureSnapshot Start(const RemotePlayWindow& candidate);
   CaptureSnapshot Stop();
+  CaptureSnapshot AttachPreview(
+      std::string_view parent_window_id,
+      const WindowBounds& bounds);
+  CaptureSnapshot DetachPreview();
   CaptureSnapshot Snapshot() const;
 
  private:

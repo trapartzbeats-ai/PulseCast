@@ -11,6 +11,7 @@ function probe(candidateCount = 0) {
     capabilities: [
       { id: "window-discovery", proofType: "real", state: "ready" },
       { id: "window-capture", proofType: "real", state: "ready" },
+      { id: "shared-texture-preview", proofType: "real", state: "ready" },
       { id: "process-audio", proofType: "unavailable", state: "unavailable" },
       { id: "program-composition", proofType: "unavailable", state: "unavailable" },
     ],
@@ -41,6 +42,15 @@ function probe(candidateCount = 0) {
       height: 0,
       lastFrameMonotonicMs: 0,
       error: null,
+      preview: {
+        proofType: "unavailable",
+        state: "detached",
+        presentedFrameCount: 0,
+        width: 0,
+        height: 0,
+        sharedHandle: null,
+        error: null,
+      },
     },
   });
 }
@@ -94,8 +104,30 @@ describe("Media Host process contract", () => {
           height: 720,
           lastFrameMonotonicMs: 0,
           error: null,
+          preview: {
+            proofType: "unavailable",
+            state: "detached",
+            presentedFrameCount: 0,
+            width: 0,
+            height: 0,
+            sharedHandle: null,
+            error: null,
+          },
         }),
       ),
     ).toThrow("without a real frame");
+  });
+
+  it("requires a presented frame before preview becomes active", () => {
+    const invalid = JSON.parse(probe()) as {
+      capture: {
+        preview: { state: string; proofType: string };
+      };
+    };
+    invalid.capture.preview.state = "active";
+    invalid.capture.preview.proofType = "unavailable";
+    expect(() => parseMediaHostProbe(JSON.stringify(invalid))).toThrow(
+      "active preview without a presented frame",
+    );
   });
 });

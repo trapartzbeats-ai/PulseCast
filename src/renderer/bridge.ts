@@ -130,6 +130,9 @@ const browserBridge: PulseCastBridge = {
   async stopMediaHostCapture() {
     throw new Error("Open the Electron app to stop Windows Graphics Capture.");
   },
+  async setMediaHostPreview() {
+    throw new Error("Open the Electron app to present the native shared-texture preview.");
+  },
   async runNativeCaptureProof(): Promise<NativeCaptureProof> {
     return {
       proofType: "real",

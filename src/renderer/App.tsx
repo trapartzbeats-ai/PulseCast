@@ -25,6 +25,7 @@ import {
 } from "../shared/contracts";
 import { getBridge, isElectronBridge } from "./bridge";
 import { DevicesPanel } from "./media/DevicesPanel";
+import { NativeMediaHostPreview } from "./media/NativeMediaHostPreview";
 import { useMediaDevices } from "./media/useMediaDevices";
 import { SettingsView } from "./media/SettingsView";
 
@@ -653,7 +654,7 @@ function Studio({
 
       {workspace === "settings" ? (
         <div style={{ flex: 1, overflow: "auto", padding: "24px" }}>
-          <SettingsView media={media} adapters={adapters} />
+          <SettingsView media={media} adapters={adapters} nativePreviewBlocked={diagnosticsOpen} />
         </div>
       ) : (
         <>
@@ -728,6 +729,7 @@ function Studio({
                 displayAudioElementRef={media.displayAudioElementRef}
                 displayPreviewState={media.displayPreviewState}
                 displayStream={media.displayStream}
+                nativePreviewBlocked={diagnosticsOpen}
                 onStartDisplayCapture={media.startDisplayCapture}
                 onStopDisplayCapture={media.stopDisplayCapture}
                 onStartPreview={media.startPreview}
@@ -922,6 +924,7 @@ function CanvasPreview({
   displayAudioElementRef,
   displayPreviewState,
   displayStream,
+  nativePreviewBlocked,
   onStartDisplayCapture,
   onStopDisplayCapture,
   onStartPreview,
@@ -941,6 +944,7 @@ function CanvasPreview({
   displayAudioElementRef: React.RefObject<HTMLAudioElement | null>;
   displayPreviewState: "off" | "starting" | "active" | "failed";
   displayStream: React.MutableRefObject<MediaStream | null>;
+  nativePreviewBlocked: boolean;
   onStartDisplayCapture: () => void;
   onStopDisplayCapture: () => void;
   onStartPreview: () => Promise<void>;
@@ -1121,6 +1125,7 @@ function CanvasPreview({
       >
         <div className="canvas-grid" />
         <div className="safe-area" />
+        <NativeMediaHostPreview variant="canvas" disabled={nativePreviewBlocked} />
         <video
           ref={videoElementRef}
           autoPlay

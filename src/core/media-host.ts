@@ -22,6 +22,18 @@ const mediaHostCaptureSchema = z.object({
   height: z.number().int().nonnegative(),
   lastFrameMonotonicMs: z.number().int().nonnegative(),
   error: z.string().nullable(),
+  preview: z.object({
+    proofType: z.enum(["real", "unavailable"]),
+    state: z.enum(["detached", "waiting", "active", "failed"]),
+    presentedFrameCount: z.number().int().nonnegative(),
+    width: z.number().int().nonnegative(),
+    height: z.number().int().nonnegative(),
+    sharedHandle: z
+      .string()
+      .regex(/^0x[0-9a-f]+$/i)
+      .nullable(),
+    error: z.string().nullable(),
+  }),
 });
 
 const mediaHostProbeSchema = z.object({
@@ -32,7 +44,13 @@ const mediaHostProbeSchema = z.object({
   processId: z.number().int().positive(),
   capabilities: z.array(
     z.object({
-      id: z.enum(["window-discovery", "window-capture", "process-audio", "program-composition"]),
+      id: z.enum([
+        "window-discovery",
+        "window-capture",
+        "shared-texture-preview",
+        "process-audio",
+        "program-composition",
+      ]),
       proofType: proofTypeSchema,
       state: z.enum(["ready", "unavailable"]),
     }),
@@ -80,7 +98,10 @@ export function parseMediaHostProbe(value: string): MediaHostProbe {
     throw new Error("Media Host candidate count does not match its candidate list.");
   }
   for (const capability of parsed.capabilities) {
-    const implemented = capability.id === "window-discovery" || capability.id === "window-capture";
+    const implemented =
+      capability.id === "window-discovery" ||
+      capability.id === "window-capture" ||
+      capability.id === "shared-texture-preview";
     if (
       (implemented && (capability.proofType !== "real" || capability.state !== "ready")) ||
       (!implemented &&
@@ -89,22 +110,36 @@ export function parseMediaHostProbe(value: string): MediaHostProbe {
       throw new Error(`Media Host capability ${capability.id} has an invalid proof label.`);
     }
   }
+  validateMediaHostCapture(parsed.capture);
   return parsed;
 }
 
-export function parseMediaHostCapture(value: string): MediaHostCapture {
-  const parsed = mediaHostCaptureSchema.parse(JSON.parse(value));
-  const hasFrames = parsed.frameCount > 0;
+function validateMediaHostCapture(capture: MediaHostCapture): MediaHostCapture {
+  const hasFrames = capture.frameCount > 0;
   if (
-    (hasFrames && parsed.proofType !== "real") ||
-    (!hasFrames && parsed.proofType !== "unavailable")
+    (hasFrames && capture.proofType !== "real") ||
+    (!hasFrames && capture.proofType !== "unavailable")
   ) {
     throw new Error("Media Host capture proof label does not match its frame count.");
   }
-  if (parsed.state === "active" && !hasFrames) {
+  if (capture.state === "active" && !hasFrames) {
     throw new Error("Media Host cannot report active capture without a real frame.");
   }
-  return parsed;
+  const hasPresentedFrames = capture.preview.presentedFrameCount > 0;
+  if (
+    (hasPresentedFrames && capture.preview.proofType !== "real") ||
+    (!hasPresentedFrames && capture.preview.proofType !== "unavailable")
+  ) {
+    throw new Error("Media Host preview proof label does not match its presented frame count.");
+  }
+  if (capture.preview.state === "active" && !hasPresentedFrames) {
+    throw new Error("Media Host cannot report an active preview without a presented frame.");
+  }
+  return capture;
+}
+
+export function parseMediaHostCapture(value: string): MediaHostCapture {
+  return validateMediaHostCapture(mediaHostCaptureSchema.parse(JSON.parse(value)));
 }
 
 export async function probeMediaHost(

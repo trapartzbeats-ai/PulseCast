@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -7,9 +9,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const hostPath = path.join(root, "build", "media-host", "Release", "PulseCastMediaHost.exe");
 const fixturePath = path.join(root, "scripts", "remote-play-window-fixture.ps1");
 
-const fixture = spawn(
-  "powershell.exe",
-  [
+function launchFixture(title, handlePath = "") {
+  const argumentsList = [
     "-NoProfile",
     "-WindowStyle",
     "Hidden",
@@ -18,9 +19,19 @@ const fixture = spawn(
     "-STA",
     "-File",
     fixturePath,
-  ],
-  { windowsHide: false, stdio: "ignore" },
+    "-Title",
+    title,
+  ];
+  if (handlePath) argumentsList.push("-HandlePath", handlePath);
+  return spawn("powershell.exe", argumentsList, { windowsHide: false, stdio: "ignore" });
+}
+
+const previewHandlePath = path.join(
+  os.tmpdir(),
+  `pulsecast-preview-handle-${process.pid}-${Date.now()}.txt`,
 );
+const fixture = launchFixture("PS Remote Play");
+const previewHost = launchFixture("PulseCast Preview Host", previewHandlePath);
 const host = spawn(hostPath, ["--serve"], {
   windowsHide: true,
   stdio: ["pipe", "pipe", "pipe"],
@@ -59,7 +70,19 @@ async function command(value) {
 
 let finalCapture = null;
 let candidate = null;
+let previewParentWindowId = "";
 try {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      previewParentWindowId = (await readFile(previewHandlePath, "ascii")).trim();
+    } catch {
+      // The fixture writes its HWND after its form is shown.
+    }
+    if (/^0x[0-9a-f]+$/i.test(previewParentWindowId)) break;
+    await sleep(100);
+  }
+  if (!previewParentWindowId) throw new Error("The preview host HWND was not published.");
+
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const probe = await command({ type: "probe" });
     candidate = probe.candidates.find(
@@ -72,19 +95,44 @@ try {
 
   const started = await command({ type: "capture-start", windowId: candidate.windowId });
   if (started.state === "failed") throw new Error(started.error || "Capture failed to start.");
+  const attached = await command({
+    type: "preview-attach",
+    parentWindowId: previewParentWindowId,
+    x: 24,
+    y: 120,
+    width: 800,
+    height: 380,
+  });
+  if (attached.preview.state === "failed") {
+    throw new Error(attached.preview.error || "Shared-texture preview failed to attach.");
+  }
 
   for (let attempt = 0; attempt < 50; attempt += 1) {
     finalCapture = await command({ type: "capture-status" });
-    if (finalCapture.state === "active" && finalCapture.frameCount > 0) break;
+    if (
+      finalCapture.state === "active" &&
+      finalCapture.frameCount > 0 &&
+      finalCapture.preview.state === "active" &&
+      finalCapture.preview.presentedFrameCount > 0
+    ) {
+      break;
+    }
     if (finalCapture.state === "failed") {
       throw new Error(finalCapture.error || "Capture failed before a frame arrived.");
     }
     await sleep(100);
   }
-  if (!finalCapture || finalCapture.state !== "active" || finalCapture.frameCount < 1) {
-    throw new Error("Windows Graphics Capture did not produce a real frame.");
+  if (
+    !finalCapture ||
+    finalCapture.state !== "active" ||
+    finalCapture.frameCount < 1 ||
+    finalCapture.preview.state !== "active" ||
+    finalCapture.preview.presentedFrameCount < 1
+  ) {
+    throw new Error("The shared-texture preview did not present a real captured frame.");
   }
 
+  await command({ type: "preview-detach" });
   await command({ type: "capture-stop" });
   await command({ type: "shutdown" });
   process.stdout.write(
@@ -108,4 +156,6 @@ try {
   lines.close();
   if (!host.killed) host.kill();
   if (!fixture.killed) fixture.kill();
+  if (!previewHost.killed) previewHost.kill();
+  await rm(previewHandlePath, { force: true });
 }

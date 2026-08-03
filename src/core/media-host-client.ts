@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import type { MediaHostCapture, MediaHostProbe } from "../shared/contracts";
+import type { MediaHostCapture, MediaHostPreviewBounds, MediaHostProbe } from "../shared/contracts";
 import { getMediaHostPath, parseMediaHostCapture, parseMediaHostProbe } from "./media-host";
 
 interface PendingResponse {
@@ -55,6 +55,19 @@ export class MediaHostClient {
     return parseMediaHostCapture(await this.request({ type: "capture-stop" }));
   }
 
+  async attachPreview(
+    parentWindowId: string,
+    bounds: MediaHostPreviewBounds,
+  ): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(
+      await this.request({ type: "preview-attach", parentWindowId, ...bounds }),
+    );
+  }
+
+  async detachPreview(): Promise<MediaHostCapture> {
+    return parseMediaHostCapture(await this.request({ type: "preview-detach" }));
+  }
+
   async stop(): Promise<void> {
     const child = this.child;
     if (!child) return;
@@ -83,7 +96,9 @@ export class MediaHostClient {
   private request(
     command:
       | { type: "probe" | "capture-status" | "capture-stop" | "shutdown" }
-      | { type: "capture-start"; windowId: string },
+      | { type: "capture-start"; windowId: string }
+      | ({ type: "preview-attach"; parentWindowId: string } & MediaHostPreviewBounds)
+      | { type: "preview-detach" },
     timeoutMs = 5_000,
   ): Promise<string> {
     this.start();

@@ -16,7 +16,8 @@ Electron main process
     ├── real Win32 Remote Play window discovery
     ├── Windows Graphics Capture + D3D11 frame acquisition
     ├── capture lifecycle, resolution, frame, and stall telemetry
-    ├── shared-texture presentation: unavailable
+    ├── keyed shared-texture publisher + second-device consumer
+    ├── child-HWND source-preview presentation
     ├── process audio: unavailable
     └── Program composition: unavailable
 
@@ -25,6 +26,7 @@ Electron renderer
 ├── one application-level device controller
 ├── browser camera/mic and display preview
 ├── Pulse Core graphic owner
+├── native Settings and Production source-monitor bounds
 ├── simulated audio routing
 └── mock Foundation destinations
 ```
@@ -33,10 +35,14 @@ The current renderer is a retained control-plane prototype. Browser media
 preview is not the Program compositor. The Media Host is now a real native and
 packaged process boundary. It now opens real Windows Graphics Capture sessions
 and consumes native D3D11 frames, but only the labeled mock-window path has
-been proven. A shared-texture presentation surface and the official Sony
-Remote Play client proof remain open. The
-FFmpeg DirectShow worker is a bounded proof adapter and its network start IPC
-is disabled.
+been proven. The Media Host now copies capture frames into a keyed NT-handle
+shared texture, reopens it on a second D3D11 device, and presents it through a
+native child HWND parented to Electron. Renderer JSON carries only validated
+bounds and telemetry; raw pixels remain native. The surface is a source
+monitor, not the Program compositor, and only the labeled mock-window path has
+been proven. Official Sony Remote Play, a connected PS5, process audio, and
+Program composition remain open. The FFmpeg DirectShow worker is a bounded
+proof adapter and its network start IPC is disabled.
 
 ## Required product architecture
 
@@ -72,7 +78,10 @@ separately licensed and source-published, and subject to legal review. The
 official Remote Play capture path remains the fallback.
 
 Frames and samples never travel through renderer JSON IPC or browser
-MediaStreams. Cross-process contracts are versioned and validated.
+MediaStreams. The current preview contract sends a parent window handle,
+physical-pixel bounds, state, counters, dimensions, and a shared-handle
+descriptor; the actual capture texture remains in the native data plane.
+Cross-process contracts are versioned and validated.
 
 ## Persistence migration
 

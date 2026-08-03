@@ -1,0 +1,16 @@
+{
+  "schema": "pulsecast.ui-scorecard/v1",
+  "status": "PASS",
+  "scores": {
+    "packagedRuntime": "PASS",
+    "settingsNativePreview": "PASS",
+    "productionSourceMonitor": "PASS",
+    "presentedFrameTelemetry": "PASS",
+    "diagnosticsSafetyDetach": "PASS",
+    "reattachAfterDiagnostics": "PASS",
+    "stopCleanup": "PASS",
+    "truthfulness": "PASS",
+    "officialSonyClient": "NOT_PROVEN",
+    "programCompositor": "NOT_PROVEN"
+  }
+}

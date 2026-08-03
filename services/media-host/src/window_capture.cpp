@@ -1,4 +1,5 @@
 #include "pulsecast/window_capture.hpp"
+#include "pulsecast/shared_texture_preview.hpp"
 
 #include <d3d11.h>
 #include <windows.graphics.capture.interop.h>
@@ -162,11 +163,29 @@ class WindowCapture::Impl {
     frame_pool_ = nullptr;
     item_ = nullptr;
     device_ = nullptr;
+    const auto preview = preview_.Detach();
 
     std::scoped_lock lock(mutex_);
     if (snapshot_.state != CaptureState::idle && snapshot_.state != CaptureState::failed) {
       snapshot_.state = CaptureState::stopped;
     }
+    snapshot_.preview = preview;
+    return snapshot_;
+  }
+
+  CaptureSnapshot AttachPreview(
+      std::string_view parent_window_id,
+      const WindowBounds& bounds) {
+    const auto preview = preview_.Attach(parent_window_id, bounds);
+    std::scoped_lock lock(mutex_);
+    snapshot_.preview = preview;
+    return snapshot_;
+  }
+
+  CaptureSnapshot DetachPreview() {
+    const auto preview = preview_.Detach();
+    std::scoped_lock lock(mutex_);
+    snapshot_.preview = preview;
     return snapshot_;
   }
 
@@ -205,6 +224,13 @@ class WindowCapture::Impl {
         return;
       }
       const auto size = frame.ContentSize();
+      const auto surface_access =
+          frame.Surface().as<::Windows::Graphics::DirectX::Direct3D11::
+                                 IDirect3DDxgiInterfaceAccess>();
+      winrt::com_ptr<ID3D11Texture2D> source_texture;
+      winrt::check_hresult(surface_access->GetInterface(
+          __uuidof(ID3D11Texture2D), source_texture.put_void()));
+      const auto preview = preview_.Present(source_texture.get());
       std::scoped_lock lock(mutex_);
       ++snapshot_.frame_count;
       snapshot_.width = static_cast<std::uint32_t>(size.Width);
@@ -212,6 +238,7 @@ class WindowCapture::Impl {
       snapshot_.last_frame_monotonic_ms = MonotonicMilliseconds();
       snapshot_.state = CaptureState::active;
       snapshot_.error.clear();
+      snapshot_.preview = preview;
     } catch (const winrt::hresult_error& error) {
       std::scoped_lock lock(mutex_);
       snapshot_.state = CaptureState::failed;
@@ -226,6 +253,7 @@ class WindowCapture::Impl {
   wgc::Direct3D11CaptureFramePool frame_pool_{nullptr};
   wgc::GraphicsCaptureSession session_{nullptr};
   winrt::event_token frame_arrived_token_{};
+  SharedTexturePreview preview_;
 };
 
 WindowCapture::WindowCapture() : impl_(std::make_unique<Impl>()) {}
@@ -237,6 +265,16 @@ CaptureSnapshot WindowCapture::Start(const RemotePlayWindow& candidate) {
 
 CaptureSnapshot WindowCapture::Stop() {
   return impl_->Stop();
+}
+
+CaptureSnapshot WindowCapture::AttachPreview(
+    std::string_view parent_window_id,
+    const WindowBounds& bounds) {
+  return impl_->AttachPreview(parent_window_id, bounds);
+}
+
+CaptureSnapshot WindowCapture::DetachPreview() {
+  return impl_->DetachPreview();
 }
 
 CaptureSnapshot WindowCapture::Snapshot() const {

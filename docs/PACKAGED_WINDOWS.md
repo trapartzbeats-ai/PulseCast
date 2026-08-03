@@ -34,9 +34,15 @@ window, working Show/checkpoint creation, clean close, and lock removal. The
 2026-08-03 Gate 1 package additionally proved that the embedded Media Host can
 run its real discovery probe, is supervised by Electron, and can capture real
 D3D11 frames from a labeled mock Remote Play window. That capture proof is
-`fault-injected-real`. It does not prove the official Sony Remote Play client,
-a connected PS5, shared-texture presentation, process audio, Program media,
-recording, destination routing, installer behavior, or a production stream.
+`fault-injected-real`. Build `build-20260803-135451` additionally published the
+captured texture through a keyed NT-handle, reopened it on a second D3D11
+device, and visibly presented it inside native Settings and Production source
+monitors. Diagnostics detached the native child surface and closing
+Diagnostics reattached it. Stop removed the surface and preserved last-capture
+telemetry. This presentation proof is also `fault-injected-real`; it is not the
+Program compositor. It does not prove the official Sony Remote Play client, a
+connected PS5, process audio, Program media, recording, destination routing,
+installer behavior, or a production stream.
 
 Installer, portable, upgrade, uninstall, media, and routing proof remain
 separate release gates.

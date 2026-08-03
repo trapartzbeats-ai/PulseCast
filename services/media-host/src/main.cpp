@@ -11,6 +11,14 @@
 
 namespace {
 
+void PumpWindowMessages() {
+  MSG message{};
+  while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&message);
+    DispatchMessageW(&message);
+  }
+}
+
 std::string Probe(const pulsecast::media_host::WindowCapture& capture) {
   return pulsecast::media_host::BuildProbeJson(
       pulsecast::media_host::DiscoverRemotePlayWindows(),
@@ -22,6 +30,7 @@ int Serve() {
   pulsecast::media_host::WindowCapture capture;
   std::string input;
   while (std::getline(std::cin, input)) {
+    PumpWindowMessages();
     if (pulsecast::media_host::IsProbeCommand(input)) {
       std::cout << Probe(capture) << std::endl;
       continue;
@@ -52,6 +61,25 @@ int Serve() {
       std::cout << pulsecast::media_host::BuildCaptureJson(capture.Stop()) << std::endl;
       continue;
     }
+    if (pulsecast::media_host::IsPreviewAttachCommand(input)) {
+      const auto parent_window_id =
+          pulsecast::media_host::ExtractCommandString(input, "parentWindowId");
+      const auto bounds = pulsecast::media_host::WindowBounds{
+          .x = pulsecast::media_host::ExtractCommandInteger(input, "x"),
+          .y = pulsecast::media_host::ExtractCommandInteger(input, "y"),
+          .width = pulsecast::media_host::ExtractCommandInteger(input, "width"),
+          .height = pulsecast::media_host::ExtractCommandInteger(input, "height"),
+      };
+      std::cout << pulsecast::media_host::BuildCaptureJson(
+                       capture.AttachPreview(parent_window_id, bounds))
+                << std::endl;
+      continue;
+    }
+    if (pulsecast::media_host::IsPreviewDetachCommand(input)) {
+      std::cout << pulsecast::media_host::BuildCaptureJson(capture.DetachPreview())
+                << std::endl;
+      continue;
+    }
     if (pulsecast::media_host::IsShutdownCommand(input)) {
       capture.Stop();
       std::cout << "{\"schema\":\"pulsecast.media-host-event/v1\","
@@ -61,7 +89,7 @@ int Serve() {
     }
     std::cout << "{\"schema\":\"pulsecast.media-host-error/v1\","
                  "\"code\":\"COMMAND_UNSUPPORTED\","
-                 "\"message\":\"Only probe and shutdown are available in Gate 1 discovery.\"}"
+                 "\"message\":\"The Media Host command is unsupported.\"}"
               << std::endl;
   }
   return 0;

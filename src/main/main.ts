@@ -1,11 +1,11 @@
-import { app, BrowserWindow, ipcMain, session } from "electron";
+import { app, BrowserWindow, ipcMain, screen, session } from "electron";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { probeAdapters, runNativeCaptureProof } from "../core/adapters";
 import { MediaHostClient } from "../core/media-host-client";
 import { FileShowRepository } from "../core/repository";
 import { CoreRuntime } from "../core/runtime";
-import type { CommandEnvelope } from "../shared/contracts";
+import type { CommandEnvelope, MediaHostPreviewBounds } from "../shared/contracts";
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
 
 let mainWindow: BrowserWindow | null = null;
@@ -30,6 +30,34 @@ if (app.isPackaged && !process.env.PULSECAST_MEDIA_HOST_PATH) {
 function requireRuntime(): CoreRuntime {
   if (!runtime) throw new Error("PulseCast core is unavailable.");
   return runtime;
+}
+
+function requireMainWindow(): BrowserWindow {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    throw new Error("PulseCast window is unavailable.");
+  }
+  return mainWindow;
+}
+
+function mainWindowId(window: BrowserWindow): string {
+  const handle = window.getNativeWindowHandle();
+  const value = handle.length >= 8 ? handle.readBigUInt64LE(0) : BigInt(handle.readUInt32LE(0));
+  return `0x${value.toString(16)}`;
+}
+
+function physicalPreviewBounds(
+  window: BrowserWindow,
+  bounds: MediaHostPreviewBounds,
+): MediaHostPreviewBounds {
+  const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+  const integer = (value: number, minimum: number, maximum: number) =>
+    Math.max(minimum, Math.min(maximum, Math.round(value * scale)));
+  return {
+    x: integer(bounds.x, -32_768, 32_768),
+    y: integer(bounds.y, -32_768, 32_768),
+    width: integer(bounds.width, 1, 16_384),
+    height: integer(bounds.height, 1, 16_384),
+  };
 }
 
 function registerIpc(): void {
@@ -71,6 +99,18 @@ function registerIpc(): void {
     if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
     return mediaHostClient.stopCapture();
   });
+  ipcMain.handle(
+    "pulsecast:media-host:preview-set",
+    (_event, bounds: MediaHostPreviewBounds | null) => {
+      if (!mediaHostClient) throw new Error("Media Host supervisor is unavailable.");
+      if (!bounds) return mediaHostClient.detachPreview();
+      const window = requireMainWindow();
+      return mediaHostClient.attachPreview(
+        mainWindowId(window),
+        physicalPreviewBounds(window, bounds),
+      );
+    },
+  );
   ipcMain.handle(
     "pulsecast:run-native-capture-proof",
     async (_event, options: { durationMs?: number; fps?: 30 | 60 }) => {

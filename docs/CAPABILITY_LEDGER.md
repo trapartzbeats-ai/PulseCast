@@ -18,6 +18,8 @@ This ledger describes current source. Historical reports do not override it.
 | Official PS Remote Play window discovery | real | Media Host, Win32 top-level-window inventory | source selector next |
 | Windows Graphics Capture frame acquisition | fault-injected-real | Media Host captured a labeled mock window | prove official client next |
 | Capture start/status/stop UI | fault-injected-real | Packaged Electron controls and native telemetry | retain |
+| Keyed D3D11 shared-texture publication and reopen | fault-injected-real | Media Host producer texture reopened on a second D3D11 device | prove official client next |
+| Packaged native source preview | fault-injected-real | Native child-HWND presentation in Settings and Production | retain as source monitor |
 | Official PS Remote Play window source | unavailable | none | Gate 1 |
 | PS Remote Play process audio | unavailable | none | Gate 2 |
 | Twitch Window Source | unavailable | none | Gate 1 |
@@ -42,12 +44,14 @@ This ledger describes current source. Historical reports do not override it.
 | Independent route recovery | unavailable | none | Gate 4 |
 | Renderer-crash continuity | unavailable | none | Gate 5 |
 
-The current machine returned zero matching PS Remote Play windows on
-2026-08-03. That is a successful `real` discovery result, not proof of window
-capture. A later fault-injected run captured non-zero D3D11 frames from a
-labeled mock window, but no official Sony client or PS5 was connected. Process
-audio, shared-texture presentation, Program composition, and the official
-PlayStation source remain `unavailable`.
+The current machine returned zero matching PS Remote Play windows during the
+initial 2026-08-03 discovery run. That is a successful `real` discovery result,
+not proof of official-client capture. A later fault-injected run captured
+non-zero D3D11 frames from a labeled mock window, published them through a
+keyed shared texture, reopened that texture on a second D3D11 device, and
+presented the pixels in the packaged Settings and Production source monitors.
+No official Sony client or PS5 was connected. Process audio, Program
+composition, and the official PlayStation source remain `unavailable`.
 
 ## Proof separation
 

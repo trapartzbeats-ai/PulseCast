@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
+#include <limits>
 #include <sstream>
+#include <stdexcept>
 
 namespace pulsecast::media_host {
 namespace {
@@ -87,6 +89,7 @@ std::string BuildProbeJson(
          << "\"capabilities\":["
          << "{\"id\":\"window-discovery\",\"proofType\":\"real\",\"state\":\"ready\"},"
          << "{\"id\":\"window-capture\",\"proofType\":\"real\",\"state\":\"ready\"},"
+         << "{\"id\":\"shared-texture-preview\",\"proofType\":\"real\",\"state\":\"ready\"},"
          << "{\"id\":\"process-audio\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"},"
          << "{\"id\":\"program-composition\",\"proofType\":\"unavailable\",\"state\":\"unavailable\"}],"
          << "\"remotePlay\":{\"state\":\""
@@ -132,6 +135,20 @@ std::string CaptureStateName(CaptureState state) {
   return "failed";
 }
 
+std::string PreviewStateName(PreviewState state) {
+  switch (state) {
+    case PreviewState::detached:
+      return "detached";
+    case PreviewState::waiting:
+      return "waiting";
+    case PreviewState::active:
+      return "active";
+    case PreviewState::failed:
+      return "failed";
+  }
+  return "failed";
+}
+
 std::string BuildCaptureJson(const CaptureSnapshot& capture) {
   const auto has_frames = capture.frame_count > 0;
   std::ostringstream output;
@@ -146,7 +163,21 @@ std::string BuildCaptureJson(const CaptureSnapshot& capture) {
          << ",\"lastFrameMonotonicMs\":" << capture.last_frame_monotonic_ms
          << ",\"error\":"
          << (capture.error.empty() ? "null" : "\"" + JsonEscape(capture.error) + "\"")
-         << '}';
+         << ",\"preview\":{\"proofType\":\""
+         << (capture.preview.presented_frame_count > 0 ? "real" : "unavailable") << "\","
+         << "\"state\":\"" << PreviewStateName(capture.preview.state) << "\","
+         << "\"presentedFrameCount\":" << capture.preview.presented_frame_count << ','
+         << "\"width\":" << capture.preview.width << ','
+         << "\"height\":" << capture.preview.height << ','
+         << "\"sharedHandle\":"
+         << (capture.preview.shared_handle.empty()
+                 ? "null"
+                 : "\"" + JsonEscape(capture.preview.shared_handle) + "\"")
+         << ",\"error\":"
+         << (capture.preview.error.empty()
+                 ? "null"
+                 : "\"" + JsonEscape(capture.preview.error) + "\"")
+         << "}}";
   return output.str();
 }
 
@@ -162,6 +193,35 @@ std::string ExtractCommandString(std::string_view input, std::string_view proper
     return {};
   }
   return std::string{input.substr(value_start, end - value_start)};
+}
+
+std::int32_t ExtractCommandInteger(std::string_view input, std::string_view property) {
+  const auto prefix = std::string{"\""} + std::string{property} + "\":";
+  const auto start = input.find(prefix);
+  if (start == std::string_view::npos) {
+    throw std::invalid_argument("Required integer command property is missing.");
+  }
+  auto value_start = start + prefix.size();
+  while (value_start < input.size() && std::isspace(static_cast<unsigned char>(input[value_start]))) {
+    ++value_start;
+  }
+  auto value_end = value_start;
+  if (value_end < input.size() && input[value_end] == '-') {
+    ++value_end;
+  }
+  while (value_end < input.size() && std::isdigit(static_cast<unsigned char>(input[value_end]))) {
+    ++value_end;
+  }
+  if (value_end == value_start ||
+      (value_end == value_start + 1 && input[value_start] == '-')) {
+    throw std::invalid_argument("Integer command property is invalid.");
+  }
+  const auto value = std::stoll(std::string{input.substr(value_start, value_end - value_start)});
+  if (value < std::numeric_limits<std::int32_t>::min() ||
+      value > std::numeric_limits<std::int32_t>::max()) {
+    throw std::out_of_range("Integer command property is out of range.");
+  }
+  return static_cast<std::int32_t>(value);
 }
 
 bool IsProbeCommand(std::string_view input) {
@@ -182,6 +242,14 @@ bool IsCaptureStatusCommand(std::string_view input) {
 
 bool IsCaptureStopCommand(std::string_view input) {
   return IsVersionedCommand(input, "capture-stop");
+}
+
+bool IsPreviewAttachCommand(std::string_view input) {
+  return IsVersionedCommand(input, "preview-attach");
+}
+
+bool IsPreviewDetachCommand(std::string_view input) {
+  return IsVersionedCommand(input, "preview-detach");
 }
 
 }  // namespace pulsecast::media_host

@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { getBridge } from "../bridge";
 import type { AdapterStatus, MediaHostProbe } from "../../shared/contracts";
 import { formatDb, type UseMediaDevicesReturn } from "./useMediaDevices";
+import { NativeMediaHostPreview } from "./NativeMediaHostPreview";
 
 const bridge = getBridge();
 
 interface SettingsViewProps {
   media: UseMediaDevicesReturn;
   adapters: AdapterStatus[];
+  nativePreviewBlocked?: boolean;
 }
 
-export function SettingsView({ media, adapters }: SettingsViewProps) {
+export function SettingsView({ media, adapters, nativePreviewBlocked = false }: SettingsViewProps) {
   const mediaHost = adapters.find((adapter) => adapter.id === "media-host");
   const [mediaHostProbe, setMediaHostProbe] = useState<MediaHostProbe | null>(null);
   const [selectedWindowId, setSelectedWindowId] = useState("");
@@ -140,8 +142,17 @@ export function SettingsView({ media, adapters }: SettingsViewProps) {
                 <span>{capture.state === "active" ? "Source" : "Last source"}</span>
                 <strong>{selectedCandidate?.executableName || "Remote Play"}</strong>
               </div>
+              <div>
+                <span>Preview</span>
+                <strong>
+                  {capture.preview.state === "active"
+                    ? "NATIVE"
+                    : capture.preview.state.toUpperCase()}
+                </strong>
+              </div>
             </div>
           )}
+          <NativeMediaHostPreview capture={capture} disabled={nativePreviewBlocked} />
           <div className="settings-actions">
             {capture?.state === "active" || capture?.state === "stalled" ? (
               <button

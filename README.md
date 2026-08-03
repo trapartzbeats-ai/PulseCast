@@ -19,6 +19,8 @@ Current real capabilities include:
 - real Win32 discovery of official PS Remote Play top-level windows;
 - Windows Graphics Capture/D3D11 frame acquisition with start, status, stop,
   resolution, stall, and frame-count telemetry;
+- keyed D3D11 shared-texture publication, second-device reopen, and native
+  presentation inside the Settings and Production source monitors;
 - browser/Electron device preview;
 - bounded camera/microphone and display-to-MP4 proof adapters;
 - packaged Windows application shell.
@@ -29,9 +31,11 @@ currently `unavailable`. The older direct camera/microphone RTMPS worker is
 disabled at the Electron boundary because it bypasses Program and does not
 meet the security contract.
 
-Window capture currently has `fault-injected-real` proof against a labeled
-mock Remote Play window. The official Sony client and PS5 source remain
-`unavailable` until that exact live path produces frames in a named proof run.
+Window capture and native shared-texture presentation currently have
+`fault-injected-real` proof against a labeled mock Remote Play window. This is
+a source monitor, not the Program compositor. The official Sony client, PS5
+source, process audio, and composed Program remain `unavailable` until those
+exact paths pass named proof runs.
 
 Read these before implementation:
 

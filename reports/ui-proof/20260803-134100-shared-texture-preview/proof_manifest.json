@@ -1,0 +1,17 @@
+{
+  "schema": "pulsecast.ui-proof-manifest/v1",
+  "surface": "Gate 1 keyed shared-texture native source preview",
+  "capturedFrom": "release-reboot/build-20260803-135451/win-unpacked/PulseCast Studio.exe",
+  "runtime": "packaged Electron plus packaged Media Host and labeled mock Remote Play fixture",
+  "capturedAt": "2026-08-03T19:07:00Z",
+  "viewport": "1426x893",
+  "proofType": "fault-injected-real",
+  "screenshots": [
+    "screenshot_default.png",
+    "screenshot_states/settings-embedded-preview.png",
+    "screenshot_states/production-source-preview.png",
+    "screenshot_states/diagnostics-preview-blocked.png",
+    "screenshot_states/stopped-detached.png"
+  ],
+  "status": "PASS"
+}

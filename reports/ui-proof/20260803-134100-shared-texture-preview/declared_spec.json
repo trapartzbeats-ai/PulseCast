@@ -1,0 +1,22 @@
+{
+  "schema": "pulsecast.ui-declared-spec/v1",
+  "title": "Native shared-texture source monitor",
+  "proofType": "fault-injected-real",
+  "requirements": [
+    "Settings presents acquired pixels in a native child surface",
+    "Production presents the same source in a bounded source-monitor region",
+    "Presentation counters increase after captured frames arrive",
+    "Diagnostics detaches the native child surface",
+    "Closing Diagnostics allows presentation to reattach",
+    "Stopping capture detaches the surface and preserves last-capture telemetry",
+    "The UI does not claim this source monitor is Program"
+  ],
+  "excluded": [
+    "official Sony Remote Play client",
+    "connected PS5",
+    "process audio",
+    "Program compositor",
+    "recording",
+    "Twitch or Facebook output"
+  ]
+}

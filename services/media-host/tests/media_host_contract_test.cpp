@@ -25,6 +25,7 @@ int main() {
   using pulsecast::media_host::CaptureState;
   using pulsecast::media_host::ExtractCommandString;
   using pulsecast::media_host::IsCaptureStartCommand;
+  using pulsecast::media_host::IsPreviewAttachCommand;
   using pulsecast::media_host::IsProbeCommand;
   using pulsecast::media_host::IsRemotePlayCandidate;
   using pulsecast::media_host::IsShutdownCommand;
@@ -46,6 +47,14 @@ int main() {
       "\"type\":\"capture-start\",\"windowId\":\"0x1234\"}";
   Expect(IsCaptureStartCommand(start_command), "versioned capture start command");
   Expect(ExtractCommandString(start_command, "windowId") == "0x1234", "extract window ID");
+  const std::string preview_command =
+      "{\"schema\":\"pulsecast.media-host-command/v1\","
+      "\"type\":\"preview-attach\",\"parentWindowId\":\"0x5678\","
+      "\"x\":10,\"y\":20,\"width\":640,\"height\":360}";
+  Expect(IsPreviewAttachCommand(preview_command), "versioned preview attach command");
+  Expect(
+      pulsecast::media_host::ExtractCommandInteger(preview_command, "width") == 640,
+      "extract preview width");
 
   const std::vector<RemotePlayWindow> windows{{
       .window_id = "0x1234",
@@ -73,6 +82,10 @@ int main() {
   });
   Expect(active_capture.find("\"proofType\":\"real\"") != std::string::npos, "real frames");
   Expect(active_capture.find("\"frameCount\":12") != std::string::npos, "frame telemetry");
+  Expect(
+      active_capture.find("\"preview\":{\"proofType\":\"unavailable\"") !=
+          std::string::npos,
+      "preview unavailable before presentation");
 
   if (failures == 0) {
     std::cout << "PulseCast Media Host contract tests passed" << std::endl;

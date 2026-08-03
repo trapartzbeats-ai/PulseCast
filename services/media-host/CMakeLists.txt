@@ -23,6 +23,7 @@ target_compile_definitions(PulseCastMediaHostContract PUBLIC
 
 add_executable(PulseCastMediaHost
   src/main.cpp
+  src/shared_texture_preview.cpp
   src/window_capture.cpp
   src/window_discovery.cpp
 )

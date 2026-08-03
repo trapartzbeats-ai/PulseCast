@@ -232,7 +232,12 @@ export interface AdapterStatus {
 }
 
 export interface MediaHostCapability {
-  id: "window-discovery" | "window-capture" | "process-audio" | "program-composition";
+  id:
+    | "window-discovery"
+    | "window-capture"
+    | "shared-texture-preview"
+    | "process-audio"
+    | "program-composition";
   proofType: ProofType;
   state: "ready" | "unavailable";
 }
@@ -276,6 +281,24 @@ export interface MediaHostCapture {
   height: number;
   lastFrameMonotonicMs: number;
   error: string | null;
+  preview: MediaHostPreview;
+}
+
+export interface MediaHostPreview {
+  proofType: "real" | "unavailable";
+  state: "detached" | "waiting" | "active" | "failed";
+  presentedFrameCount: number;
+  width: number;
+  height: number;
+  sharedHandle: string | null;
+  error: string | null;
+}
+
+export interface MediaHostPreviewBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface NativeCaptureProof {
@@ -437,6 +460,7 @@ export interface PulseCastBridge {
   startMediaHostCapture(windowId: string): Promise<MediaHostCapture>;
   getMediaHostCapture(): Promise<MediaHostCapture>;
   stopMediaHostCapture(): Promise<MediaHostCapture>;
+  setMediaHostPreview(bounds: MediaHostPreviewBounds | null): Promise<MediaHostCapture>;
   runNativeCaptureProof(options?: {
     durationMs?: number;
     fps?: 30 | 60;

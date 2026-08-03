@@ -1,8 +1,13 @@
+param(
+  [string]$Title = "PS Remote Play",
+  [string]$HandlePath = ""
+)
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PS Remote Play"
+$form.Text = $Title
 $form.ClientSize = New-Object System.Drawing.Size(960, 540)
 $form.StartPosition = "CenterScreen"
 $form.BackColor = [System.Drawing.Color]::FromArgb(18, 24, 38)
@@ -12,7 +17,7 @@ $title.AutoSize = $true
 $title.Font = New-Object System.Drawing.Font("Segoe UI", 28, [System.Drawing.FontStyle]::Bold)
 $title.ForeColor = [System.Drawing.Color]::White
 $title.Location = New-Object System.Drawing.Point(54, 62)
-$title.Text = "PulseCast WGC fixture"
+$title.Text = if ($Title -eq "PS Remote Play") { "PulseCast WGC fixture" } else { "PulseCast preview host" }
 $form.Controls.Add($title)
 
 $truth = New-Object System.Windows.Forms.Label
@@ -36,5 +41,12 @@ $timer.Add_Tick({
   $clock.Text = [DateTime]::UtcNow.ToString("HH:mm:ss.fff")
 })
 $timer.Start()
+
+$form.Add_Shown({
+  if ($HandlePath) {
+    $handleValue = "0x{0:x}" -f $form.Handle.ToInt64()
+    Set-Content -LiteralPath $HandlePath -Value $handleValue -Encoding ASCII
+  }
+})
 
 [void]$form.ShowDialog()
