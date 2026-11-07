@@ -414,6 +414,24 @@ export class Ps5Feed {
 
 /* ------------------------------------------------------------------ compositor */
 
+/** Twitch lets viewers pick very dark name colours; lift them so they read on a dark stream. */
+function readableColor(hex: string): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return "#d8ff3e";
+  const n = parseInt(m[1], 16);
+  let r = (n >> 16) & 255;
+  let g = (n >> 8) & 255;
+  let b = n & 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  if (lum < 110) {
+    const lift = (110 - lum) / (255 - lum);
+    r = Math.round(r + (255 - r) * lift);
+    g = Math.round(g + (255 - g) * lift);
+    b = Math.round(b + (255 - b) * lift);
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
   for (const paragraph of text.split("\n")) {
@@ -631,7 +649,7 @@ export class Compositor {
         ctx.lineWidth = Math.max(2, size / 8);
         ctx.strokeStyle = "rgba(0,0,0,0.85)";
         ctx.strokeText(name, x, y);
-        ctx.fillStyle = row.color;
+        ctx.fillStyle = readableColor(row.color);
         ctx.fillText(name, x, y);
         x += ctx.measureText(name).width;
       } else {
