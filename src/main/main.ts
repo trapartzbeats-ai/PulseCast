@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, session } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain, screen, session } from "electron";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { probeAdapters, runNativeCaptureProof } from "../core/adapters";
@@ -13,8 +13,10 @@ import type {
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
 import { uploadTest } from "./net-test";
 import { Ps5Relay } from "./ps5-relay";
+import { TwitchChat } from "./twitch-chat";
 
 let ps5: Ps5Relay | null = null;
+let chat: TwitchChat | null = null;
 let mainWindow: BrowserWindow | null = null;
 let runtime: CoreRuntime | null = null;
 let mediaIpc: ReturnType<typeof registerFfmpegMediaIpc> | null = null;
@@ -90,6 +92,11 @@ function registerPs5Ipc(): void {
   ipcMain.on("pulsecast:ps5:out-video", (_event, packet) => ps5?.feedOutVideo(packet));
   ipcMain.on("pulsecast:ps5:out-audio", (_event, pcm) => ps5?.feedOutAudio(pcm));
   ipcMain.handle("pulsecast:net:upload-test", () => uploadTest());
+  chat = new TwitchChat((event) => mainWindow?.webContents.send("pulsecast:chat", event));
+  ipcMain.handle("pulsecast:chat:connect", (_event, channel: string) =>
+    chat!.connect(String(channel)),
+  );
+  ipcMain.handle("pulsecast:chat:disconnect", () => chat!.disconnect());
   ipcMain.on("pulsecast:ps5:auto-reconnect", (_event, on) => ps5?.setAutoReconnect(Boolean(on)));
   ipcMain.handle("pulsecast:ps5:end-live", () => ps5!.endLive());
   ipcMain.handle("pulsecast:ps5:set-key", (_event, platform, key: string) =>
@@ -225,15 +232,32 @@ app.whenReady().then(async () => {
   );
   await createWindow();
 
+  // work while a game or another window has focus; failure (key taken) is not fatal
+  for (const [accelerator, action] of [
+    ["CommandOrControl+Alt+B", "panic"],
+    ["CommandOrControl+Alt+M", "mic"],
+  ] as const) {
+    try {
+      globalShortcut.register(accelerator, () =>
+        mainWindow?.webContents.send("pulsecast:hotkey", action),
+      );
+    } catch {
+      // another program already owns this key
+    }
+  }
+
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) await createWindow();
   });
 });
 
+app.on("will-quit", () => globalShortcut.unregisterAll());
+
 app.on("before-quit", (event) => {
   if (quitReady) return;
   event.preventDefault();
   ps5?.dispose();
+  chat?.disconnect();
   void Promise.all([mediaHostClient?.stop(), mediaIpc?.dispose(), runtime?.close()])
     .catch(() => undefined)
     .finally(() => {

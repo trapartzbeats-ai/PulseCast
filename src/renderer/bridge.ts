@@ -259,6 +259,18 @@ const browserBridge: PulseCastBridge = {
   subscribePs5Status() {
     return () => undefined;
   },
+  async chatConnect() {
+    throw new Error("Chat can only be read from the PulseCast app.");
+  },
+  async chatDisconnect() {
+    // nothing to close in a plain browser
+  },
+  subscribeChat() {
+    return () => undefined;
+  },
+  subscribeHotkeys() {
+    return () => undefined;
+  },
   async openMediaArtifact() {
     return {
       opened: false,

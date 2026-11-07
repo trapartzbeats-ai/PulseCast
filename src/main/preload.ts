@@ -36,7 +36,8 @@ const bridge: PulseCastBridge = {
   ps5Status: () => ipcRenderer.invoke("pulsecast:ps5:status"),
   ps5Start: (request) => ipcRenderer.invoke("pulsecast:ps5:start", request),
   ps5Stop: () => ipcRenderer.invoke("pulsecast:ps5:stop"),
-  ps5GoLive: (platforms, options) => ipcRenderer.invoke("pulsecast:ps5:go-live", platforms, options),
+  ps5GoLive: (platforms, options) =>
+    ipcRenderer.invoke("pulsecast:ps5:go-live", platforms, options),
   ps5OutVideo: (packet) => ipcRenderer.send("pulsecast:ps5:out-video", packet),
   ps5OutAudio: (pcm) => ipcRenderer.send("pulsecast:ps5:out-audio", pcm),
   subscribePs5Audio: (listener) => {
@@ -60,6 +61,20 @@ const bridge: PulseCastBridge = {
       listener(status);
     ipcRenderer.on("pulsecast:ps5:status", handler);
     return () => ipcRenderer.removeListener("pulsecast:ps5:status", handler);
+  },
+  chatConnect: (channel) => ipcRenderer.invoke("pulsecast:chat:connect", channel),
+  chatDisconnect: () => ipcRenderer.invoke("pulsecast:chat:disconnect"),
+  subscribeChat: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, chat: Parameters<typeof listener>[0]) =>
+      listener(chat);
+    ipcRenderer.on("pulsecast:chat", handler);
+    return () => ipcRenderer.removeListener("pulsecast:chat", handler);
+  },
+  subscribeHotkeys: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, action: "panic" | "mic") =>
+      listener(action);
+    ipcRenderer.on("pulsecast:hotkey", handler);
+    return () => ipcRenderer.removeListener("pulsecast:hotkey", handler);
   },
   openMediaArtifact: (filePath) => ipcRenderer.invoke("pulsecast:media:open-artifact", filePath),
 };

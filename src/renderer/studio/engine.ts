@@ -5,7 +5,7 @@ const bridge = getBridge();
 
 /* ------------------------------------------------------------------ scene model */
 
-export type LayerKind = "ps5" | "camera" | "text" | "image";
+export type LayerKind = "ps5" | "camera" | "text" | "image" | "chat" | "alert" | "counter";
 
 export interface Layer {
   id: string;
@@ -22,10 +22,53 @@ export interface Layer {
   mirror?: boolean;
   /** Camera look: window shape, zoom into the picture, nudge it, colour, and an outline. */
   cam?: CameraLook;
-  text?: { value: string; size: number; color: string; bold: boolean; outline: boolean; align: "left" | "center" | "right" };
+  text?: {
+    value: string;
+    size: number;
+    color: string;
+    bold: boolean;
+    outline: boolean;
+    align: "left" | "center" | "right";
+  };
   /** data: URL for image layers */
   image?: string;
+  /** Live chat from the connected Twitch channel: how many lines, text size, seconds before a line fades (0 = stay). */
+  chat?: { lines: number; size: number; fadeSec: number };
+  /** Pop-up banner for sub / raid alerts (and the Test alert button). */
+  alert?: { size: number; seconds: number; color: string };
+  /** A number you change with the buttons, e.g. deaths or wins. */
+  counter?: { label: string; value: number; size: number; color: string };
 }
+
+/* ------------------------------------------------------------------ chat + alerts feed */
+
+export interface ChatLine {
+  id: string;
+  user: string;
+  color: string;
+  text: string;
+  at: number;
+}
+export interface AlertItem {
+  id: string;
+  title: string;
+  detail: string;
+  at: number;
+}
+
+/** Messages and alerts that overlay layers read every frame. Lives for the whole app run. */
+export const chatFeed = {
+  lines: [] as ChatLine[],
+  alerts: [] as AlertItem[],
+  pushLine(line: Omit<ChatLine, "at">): void {
+    this.lines.push({ ...line, at: performance.now() });
+    if (this.lines.length > 60) this.lines.splice(0, this.lines.length - 60);
+  },
+  pushAlert(item: Omit<AlertItem, "at">): void {
+    this.alerts.push({ ...item, at: performance.now() });
+    if (this.alerts.length > 20) this.alerts.splice(0, this.alerts.length - 20);
+  },
+};
 
 export interface CameraLook {
   shape: "rect" | "rounded" | "circle";
@@ -42,7 +85,17 @@ export interface CameraLook {
 }
 
 export function defaultCameraLook(): CameraLook {
-  return { shape: "rect", zoom: 1, shiftX: 0, shiftY: 0, brightness: 1, contrast: 1, saturation: 1, borderWidth: 0, borderColor: "#d8ff3e" };
+  return {
+    shape: "rect",
+    zoom: 1,
+    shiftX: 0,
+    shiftY: 0,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    borderWidth: 0,
+    borderColor: "#d8ff3e",
+  };
 }
 
 /** Audio that belongs to one scene. Anything left out follows the main mixer. */
@@ -68,7 +121,15 @@ export function makeLayer(kind: LayerKind, extra: Partial<Layer> = {}): Layer {
   const base: Layer = {
     id: uid(),
     kind,
-    name: kind === "ps5" ? "PS5" : kind === "camera" ? "Camera" : kind === "text" ? "Text" : "Image",
+    name: {
+      ps5: "PS5",
+      camera: "Camera",
+      text: "Text",
+      image: "Image",
+      chat: "Chat",
+      alert: "Alerts",
+      counter: "Counter",
+    }[kind],
     x: 0,
     y: 0,
     w: 1,
@@ -77,17 +138,56 @@ export function makeLayer(kind: LayerKind, extra: Partial<Layer> = {}): Layer {
     visible: true,
     fit: kind === "ps5" ? "contain" : "cover",
   };
-  if (kind === "camera") Object.assign(base, { x: 0.74, y: 0.62, w: 0.24, h: 0.34, mirror: true, cam: defaultCameraLook() });
+  if (kind === "camera")
+    Object.assign(base, {
+      x: 0.74,
+      y: 0.62,
+      w: 0.24,
+      h: 0.34,
+      mirror: true,
+      cam: defaultCameraLook(),
+    });
   if (kind === "text") {
     Object.assign(base, {
       x: 0.05,
       y: 0.05,
       w: 0.5,
       h: 0.12,
-      text: { value: "Live now", size: 64, color: "#ffffff", bold: true, outline: true, align: "left" },
+      text: {
+        value: "Live now",
+        size: 64,
+        color: "#ffffff",
+        bold: true,
+        outline: true,
+        align: "left",
+      },
     });
   }
   if (kind === "image") Object.assign(base, { x: 0.04, y: 0.04, w: 0.18, h: 0.18, fit: "contain" });
+  if (kind === "chat")
+    Object.assign(base, {
+      x: 0.02,
+      y: 0.45,
+      w: 0.3,
+      h: 0.5,
+      chat: { lines: 8, size: 26, fadeSec: 45 },
+    });
+  if (kind === "alert")
+    Object.assign(base, {
+      x: 0.25,
+      y: 0.06,
+      w: 0.5,
+      h: 0.14,
+      alert: { size: 40, seconds: 6, color: "#d8ff3e" },
+    });
+  if (kind === "counter")
+    Object.assign(base, {
+      x: 0.78,
+      y: 0.04,
+      w: 0.19,
+      h: 0.1,
+      counter: { label: "Wins", value: 0, size: 44, color: "#ffffff" },
+    });
   return { ...base, ...extra };
 }
 
@@ -114,7 +214,14 @@ export function defaultScenes(): Scene[] {
           y: 0.84,
           w: 0.8,
           h: 0.12,
-          text: { value: "Starting soon", size: 78, color: "#d8ff3e", bold: true, outline: true, align: "center" },
+          text: {
+            value: "Starting soon",
+            size: 78,
+            color: "#d8ff3e",
+            bold: true,
+            outline: true,
+            align: "center",
+          },
         }),
       ],
     },
@@ -129,7 +236,14 @@ export function defaultScenes(): Scene[] {
           y: 0.4,
           w: 0.8,
           h: 0.2,
-          text: { value: "Be right back", size: 110, color: "#ffffff", bold: true, outline: false, align: "center" },
+          text: {
+            value: "Be right back",
+            size: 110,
+            color: "#ffffff",
+            bold: true,
+            outline: false,
+            align: "center",
+          },
         }),
       ],
     },
@@ -251,7 +365,9 @@ export class Ps5Feed {
     }
     if (decoder.decodeQueueSize > 8 && !isKey) return;
     try {
-      decoder.decode(new EncodedVideoChunk({ type: isKey ? "key" : "delta", timestamp: packet.ts, data }));
+      decoder.decode(
+        new EncodedVideoChunk({ type: isKey ? "key" : "delta", timestamp: packet.ts, data }),
+      );
     } catch (e) {
       this.needKey = true;
       this.error = e instanceof Error ? e.message : "Decode failed.";
@@ -259,7 +375,11 @@ export class Ps5Feed {
   }
 
   private onAudio(bytes: Uint8Array): void {
-    const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+    const samples = new Int16Array(
+      bytes.buffer,
+      bytes.byteOffset,
+      Math.floor(bytes.byteLength / 2),
+    );
     for (let i = 0; i < samples.length; i++) {
       if (this.fill >= this.ring.length) {
         this.tail = (this.tail + 1) % this.ring.length; // overrun: drop oldest
@@ -354,22 +474,53 @@ export class Compositor {
     fit: Layer["fit"],
   ) {
     if (fit === "stretch" || !source.w || !source.h) {
-      return { sx: 0, sy: 0, sw: source.w, sh: source.h, dx: box.x, dy: box.y, dw: box.w, dh: box.h };
+      return {
+        sx: 0,
+        sy: 0,
+        sw: source.w,
+        sh: source.h,
+        dx: box.x,
+        dy: box.y,
+        dw: box.w,
+        dh: box.h,
+      };
     }
     const sourceRatio = source.w / source.h;
     const boxRatio = box.w / box.h;
     if (fit === "contain") {
       const dw = sourceRatio > boxRatio ? box.w : box.h * sourceRatio;
       const dh = sourceRatio > boxRatio ? box.w / sourceRatio : box.h;
-      return { sx: 0, sy: 0, sw: source.w, sh: source.h, dx: box.x + (box.w - dw) / 2, dy: box.y + (box.h - dh) / 2, dw, dh };
+      return {
+        sx: 0,
+        sy: 0,
+        sw: source.w,
+        sh: source.h,
+        dx: box.x + (box.w - dw) / 2,
+        dy: box.y + (box.h - dh) / 2,
+        dw,
+        dh,
+      };
     }
     // cover: crop the source to the box ratio
     const sw = sourceRatio > boxRatio ? source.h * boxRatio : source.w;
     const sh = sourceRatio > boxRatio ? source.h : source.w / boxRatio;
-    return { sx: (source.w - sw) / 2, sy: (source.h - sh) / 2, sw, sh, dx: box.x, dy: box.y, dw: box.w, dh: box.h };
+    return {
+      sx: (source.w - sw) / 2,
+      sy: (source.h - sh) / 2,
+      sw,
+      sh,
+      dx: box.x,
+      dy: box.y,
+      dw: box.w,
+      dh: box.h,
+    };
   }
 
-  private drawCamera(v: HTMLVideoElement, layer: Layer, box: { x: number; y: number; w: number; h: number }): void {
+  private drawCamera(
+    v: HTMLVideoElement,
+    layer: Layer,
+    box: { x: number; y: number; w: number; h: number },
+  ): void {
     const { ctx } = this;
     const look = { ...defaultCameraLook(), ...layer.cam };
     const p = this.place({ w: v.videoWidth, h: v.videoHeight }, box, layer.fit);
@@ -385,7 +536,12 @@ export class Compositor {
     }
     ctx.save();
     // the window the picture shows through
-    const radius = look.shape === "circle" ? Math.min(p.dw, p.dh) / 2 : look.shape === "rounded" ? Math.min(p.dw, p.dh) * 0.12 : 0;
+    const radius =
+      look.shape === "circle"
+        ? Math.min(p.dw, p.dh) / 2
+        : look.shape === "rounded"
+          ? Math.min(p.dw, p.dh) * 0.12
+          : 0;
     const path = new Path2D();
     if (look.shape === "circle") {
       const side = Math.min(p.dw, p.dh);
@@ -425,6 +581,112 @@ export class Compositor {
     }
   }
 
+  private drawChat(layer: Layer, box: { x: number; y: number; w: number; h: number }): void {
+    const { ctx } = this;
+    const cfg = layer.chat!;
+    const size = cfg.size * (this.canvas.height / 720);
+    const now = performance.now();
+    ctx.font = `600 ${size}px "Segoe UI", system-ui, sans-serif`;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.lineJoin = "round";
+    // wrap each line, newest at the bottom
+    const rows: Array<{
+      user: string;
+      color: string;
+      text: string;
+      first: boolean;
+      alpha: number;
+    }> = [];
+    for (const m of chatFeed.lines.slice(-cfg.lines)) {
+      const age = (now - m.at) / 1000;
+      if (cfg.fadeSec > 0 && age > cfg.fadeSec) continue;
+      const alpha = cfg.fadeSec > 0 ? Math.max(0, Math.min(1, (cfg.fadeSec - age) / 3)) : 1;
+      const prefix = `${m.user}: `;
+      const lead = ctx.measureText(prefix).width;
+      const wrapped = wrapLines(ctx, m.text, Math.max(40, box.w - lead));
+      wrapped.forEach((text, i) =>
+        rows.push({
+          user: i === 0 ? m.user : "",
+          color: m.color || "#d8ff3e",
+          text,
+          first: i === 0,
+          alpha,
+        }),
+      );
+    }
+    const lineH = size * 1.2;
+    const fit = Math.max(1, Math.floor(box.h / lineH));
+    const shown = rows.slice(-fit);
+    let y = box.y + box.h - shown.length * lineH;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(box.x, box.y, box.w, box.h);
+    ctx.clip();
+    for (const row of shown) {
+      ctx.globalAlpha = layer.opacity * row.alpha;
+      let x = box.x;
+      if (row.first) {
+        const name = `${row.user}: `;
+        ctx.lineWidth = Math.max(2, size / 8);
+        ctx.strokeStyle = "rgba(0,0,0,0.85)";
+        ctx.strokeText(name, x, y);
+        ctx.fillStyle = row.color;
+        ctx.fillText(name, x, y);
+        x += ctx.measureText(name).width;
+      } else {
+        x += ctx.measureText("  ").width;
+      }
+      ctx.lineWidth = Math.max(2, size / 8);
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeText(row.text, x, y);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(row.text, x, y);
+      y += lineH;
+    }
+    ctx.restore();
+  }
+
+  private drawAlert(layer: Layer, box: { x: number; y: number; w: number; h: number }): void {
+    const { ctx } = this;
+    const cfg = layer.alert!;
+    const now = performance.now();
+    const item = [...chatFeed.alerts].reverse().find((a) => now - a.at < cfg.seconds * 1000);
+    if (!item) return;
+    const age = (now - item.at) / 1000;
+    const inT = Math.min(1, age / 0.35);
+    const outT = Math.min(1, Math.max(0, (cfg.seconds - age) / 0.5));
+    const ease = 1 - Math.pow(1 - inT, 3);
+    const size = cfg.size * (this.canvas.height / 720);
+    ctx.save();
+    ctx.globalAlpha = layer.opacity * outT;
+    const slide = (1 - ease) * -box.h;
+    ctx.translate(0, slide);
+    ctx.fillStyle = "rgba(8,10,13,0.88)";
+    ctx.beginPath();
+    ctx.roundRect(box.x, box.y, box.w, box.h, 18);
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = cfg.color;
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = cfg.color;
+    ctx.font = `800 ${size}px "Segoe UI", system-ui, sans-serif`;
+    ctx.fillText(
+      item.title,
+      box.x + box.w / 2,
+      box.y + box.h * (item.detail ? 0.38 : 0.5),
+      box.w - 24,
+    );
+    if (item.detail) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `600 ${size * 0.62}px "Segoe UI", system-ui, sans-serif`;
+      ctx.fillText(item.detail, box.x + box.w / 2, box.y + box.h * 0.74, box.w - 24);
+    }
+    ctx.restore();
+  }
+
   draw(): void {
     const { ctx, canvas } = this;
     const W = canvas.width;
@@ -451,6 +713,25 @@ export class Compositor {
           const p = this.place({ w: img.naturalWidth, h: img.naturalHeight }, box, layer.fit);
           ctx.drawImage(img, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
         }
+      } else if (layer.kind === "chat" && layer.chat) {
+        this.drawChat(layer, box);
+      } else if (layer.kind === "alert" && layer.alert) {
+        this.drawAlert(layer, box);
+      } else if (layer.kind === "counter" && layer.counter) {
+        const c = layer.counter;
+        const size = c.size * (H / 720);
+        ctx.font = `700 ${size}px "Segoe UI", system-ui, sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        const label = `${c.label}  ${c.value}`;
+        const pad = size * 0.4;
+        const width = Math.min(box.w, ctx.measureText(label).width + pad * 2);
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.beginPath();
+        ctx.roundRect(box.x + (box.w - width) / 2, box.y, width, size + pad, 12);
+        ctx.fill();
+        ctx.fillStyle = c.color;
+        ctx.fillText(label, box.x + box.w / 2, box.y + (size + pad) / 2);
       } else if (layer.kind === "text" && layer.text) {
         const t = layer.text;
         const size = t.size * (H / 720);
@@ -458,7 +739,8 @@ export class Compositor {
         ctx.textBaseline = "top";
         ctx.textAlign = t.align;
         const lines = wrapLines(ctx, t.value, box.w);
-        const tx = t.align === "left" ? box.x : t.align === "center" ? box.x + box.w / 2 : box.x + box.w;
+        const tx =
+          t.align === "left" ? box.x : t.align === "center" ? box.x + box.w / 2 : box.x + box.w;
         lines.forEach((line, i) => {
           const ty = box.y + i * size * 1.15;
           if (t.outline) {
@@ -501,7 +783,10 @@ export async function listDevices(): Promise<{ cameras: MediaChoice[]; mics: Med
   const pick = (kind: MediaDeviceKind) =>
     devices
       .filter((d) => d.kind === kind)
-      .map((d, i) => ({ id: d.deviceId, label: d.label || `${kind === "videoinput" ? "Camera" : "Microphone"} ${i + 1}` }));
+      .map((d, i) => ({
+        id: d.deviceId,
+        label: d.label || `${kind === "videoinput" ? "Camera" : "Microphone"} ${i + 1}`,
+      }));
   return { cameras: pick("videoinput"), mics: pick("audioinput") };
 }
 
@@ -572,7 +857,8 @@ export class Mixer {
       const frames = e.inputBuffer.length;
       const l = e.inputBuffer.getChannelData(0);
       const r = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : l;
-      for (let c = 0; c < e.outputBuffer.numberOfChannels; c++) e.outputBuffer.getChannelData(c).fill(0);
+      for (let c = 0; c < e.outputBuffer.numberOfChannels; c++)
+        e.outputBuffer.getChannelData(c).fill(0);
       const handler = this.onPcm;
       if (!handler) return;
       const out = new Int16Array(frames * 2);
@@ -664,7 +950,11 @@ export class Mixer {
     if (!deviceId) return;
     const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
     const attempts: MediaTrackConstraints[] = [
-      { ...base, deviceId: deviceId === "default" ? undefined : { exact: deviceId }, channelCount: 1 },
+      {
+        ...base,
+        deviceId: deviceId === "default" ? undefined : { exact: deviceId },
+        channelCount: 1,
+      },
       { ...base, deviceId: deviceId === "default" ? undefined : { exact: deviceId } },
       { ...base },
     ];
@@ -728,7 +1018,8 @@ export class ProgramEncoder {
   }
 
   async start(canvas: HTMLCanvasElement, s: EncoderSettings): Promise<void> {
-    if (!ProgramEncoder.supported()) throw new Error("This window cannot encode video (WebCodecs is missing).");
+    if (!ProgramEncoder.supported())
+      throw new Error("This window cannot encode video (WebCodecs is missing).");
     const level = s.height >= 1080 ? "640028" : "64001f";
     const config: VideoEncoderConfig = {
       codec: `avc1.${level}`,
@@ -812,13 +1103,29 @@ export class ProgramEncoder {
 /* ------------------------------------------------------------------ controller from this PC */
 
 const BUTTON_BITS: Array<[number, number]> = [
-  [0, 0], [1, 1], [2, 2], [3, 3], [14, 4], [15, 5], [12, 6], [13, 7],
-  [4, 8], [5, 9], [10, 10], [11, 11], [9, 12], [8, 13], [17, 14], [16, 15],
+  [0, 0],
+  [1, 1],
+  [2, 2],
+  [3, 3],
+  [14, 4],
+  [15, 5],
+  [12, 6],
+  [13, 7],
+  [4, 8],
+  [5, 9],
+  [10, 10],
+  [11, 11],
+  [9, 12],
+  [8, 13],
+  [17, 14],
+  [16, 15],
 ];
 
 /** Polls a gamepad on this PC and returns its state; call from a timer. */
 export function readPad(): { name: string; state: Ps5PadState } | null {
-  const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => Boolean(p?.connected));
+  const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad =>
+    Boolean(p?.connected),
+  );
   const pad = pads.find((p) => p.mapping === "standard") ?? pads[0];
   if (!pad) return null;
   let buttons = 0;
@@ -859,6 +1166,7 @@ export interface StudioPrefs {
   picked?: Partial<Record<"twitch" | "facebook", boolean>>;
   adaptive?: boolean;
   uploadKbps?: number;
+  chatChannel?: string;
 }
 
 export interface StudioSave {

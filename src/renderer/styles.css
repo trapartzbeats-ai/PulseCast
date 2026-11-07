@@ -3783,8 +3783,12 @@ button:disabled {
   display: grid;
   place-items: center;
   overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 6px var(--surface-0);
-  transition: transform 0.25s ease, border-color 0.25s ease;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 6px var(--surface-0);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease;
 }
 .launch__screen:hover {
   transform: translateY(-3px);
@@ -3928,7 +3932,9 @@ button:disabled {
   text-align: center;
   gap: 6px;
   color: var(--muted);
-  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px), var(--surface-0);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px),
+    var(--surface-0);
 }
 .monitor__idle strong {
   color: var(--text);
@@ -4400,4 +4406,38 @@ button:disabled {
   text-decoration: underline;
   cursor: pointer;
   font: inherit;
+}
+
+/* ready check */
+.sx-ready {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.sx-ready ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.sx-ready li {
+  display: grid;
+  grid-template-columns: 18px auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.sx-ready li small {
+  text-align: right;
+  opacity: 0.7;
+}
+.sx-ready__ok > span {
+  color: var(--accent, #d8ff3e);
+}
+.sx-ready__todo > span {
+  opacity: 0.5;
+}
+
+.sx-muted {
+  color: #ff5a4f;
 }

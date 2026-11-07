@@ -5,6 +5,7 @@ import {
   Compositor,
   Mixer,
   Ps5Feed,
+  chatFeed,
   ProgramEncoder,
   defaultCameraLook,
   deleteSong,
@@ -27,9 +28,33 @@ import {
 const bridge = getBridge();
 
 const PRESETS = [
-  { id: "weak", label: "Weak internet", note: "720p · 30 · 2.5 Mbps", w: 1280, h: 720, fps: 30, kbps: 2500 },
-  { id: "steady", label: "Steady", note: "720p · 30 · 4 Mbps", w: 1280, h: 720, fps: 30, kbps: 4000 },
-  { id: "sharp", label: "Sharp", note: "1080p · 30 · 6 Mbps", w: 1920, h: 1080, fps: 30, kbps: 6000 },
+  {
+    id: "weak",
+    label: "Weak internet",
+    note: "720p · 30 · 2.5 Mbps",
+    w: 1280,
+    h: 720,
+    fps: 30,
+    kbps: 2500,
+  },
+  {
+    id: "steady",
+    label: "Steady",
+    note: "720p · 30 · 4 Mbps",
+    w: 1280,
+    h: 720,
+    fps: 30,
+    kbps: 4000,
+  },
+  {
+    id: "sharp",
+    label: "Sharp",
+    note: "1080p · 30 · 6 Mbps",
+    w: 1920,
+    h: 1080,
+    fps: 30,
+    kbps: 6000,
+  },
 ] as const;
 
 const PLATFORMS: Array<{ id: Ps5Platform; label: string }> = [
@@ -42,6 +67,9 @@ const KIND_LABEL: Record<LayerKind, string> = {
   camera: "Camera",
   text: "Text",
   image: "Image",
+  chat: "Chat",
+  alert: "Alerts",
+  counter: "Counter",
 };
 
 function dbToPercent(db: number): number {
@@ -50,10 +78,20 @@ function dbToPercent(db: number): number {
 
 export function StudioLive({ onBack }: { onBack(): void }) {
   /* ---- engines (created once) ---- */
-  const engines = useRef<{ feed: Ps5Feed; comp: Compositor; mixer: Mixer; enc: ProgramEncoder } | null>(null);
+  const engines = useRef<{
+    feed: Ps5Feed;
+    comp: Compositor;
+    mixer: Mixer;
+    enc: ProgramEncoder;
+  } | null>(null);
   if (!engines.current) {
     const feed = new Ps5Feed();
-    engines.current = { feed, comp: new Compositor(feed), mixer: new Mixer(feed), enc: new ProgramEncoder() };
+    engines.current = {
+      feed,
+      comp: new Compositor(feed),
+      mixer: new Mixer(feed),
+      enc: new ProgramEncoder(),
+    };
   }
   const { feed, comp, mixer, enc } = engines.current;
 
@@ -68,9 +106,15 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     twitch: save.prefs?.picked?.twitch ?? true,
     facebook: save.prefs?.picked?.facebook ?? true,
   });
-  const [keyDraft, setKeyDraft] = useState<Record<Ps5Platform, string>>({ twitch: "", facebook: "" });
+  const [keyDraft, setKeyDraft] = useState<Record<Ps5Platform, string>>({
+    twitch: "",
+    facebook: "",
+  });
   const [problem, setProblem] = useState("");
-  const [devices, setDevices] = useState<{ cameras: MediaChoice[]; mics: MediaChoice[] }>({ cameras: [], mics: [] });
+  const [devices, setDevices] = useState<{ cameras: MediaChoice[]; mics: MediaChoice[] }>({
+    cameras: [],
+    mics: [],
+  });
   const [camId, setCamId] = useState(save.prefs?.camId ?? "");
   const [micId, setMicId] = useState(save.prefs?.micId ?? "");
   const [camOn, setCamOn] = useState(save.prefs?.camOn ?? false);
@@ -82,6 +126,13 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const [adaptive, setAdaptive] = useState(save.prefs?.adaptive ?? true);
   const [uploadKbps, setUploadKbps] = useState(save.prefs?.uploadKbps ?? 0);
   const [clockOn, setClockOn] = useState(false);
+  const [micHeard, setMicHeard] = useState(false);
+  const [micOverride, setMicOverride] = useState(false);
+  const [chatChannel, setChatChannel] = useState(save.prefs?.chatChannel ?? "");
+  const [chatState, setChatState] = useState<{
+    state: "off" | "connecting" | "on" | "error";
+    detail: string;
+  }>({ state: "off", detail: "" });
   const [testing, setTesting] = useState(false);
   const [netNote, setNetNote] = useState("");
   const [liveRate, setLiveRate] = useState(0);
@@ -101,7 +152,14 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       /* per-viewer convenience only */
     }
   }, [autoRe, bridge]);
-  const [meters, setMeters] = useState({ ps5: -90, mic: -90, song: -90, fps: 0, ps5Live: false, kbps: 0 });
+  const [meters, setMeters] = useState({
+    ps5: -90,
+    mic: -90,
+    song: -90,
+    fps: 0,
+    ps5Live: false,
+    kbps: 0,
+  });
   const [busy, setBusy] = useState(false);
 
   const mounted = useRef(false);
@@ -118,12 +176,18 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   /* ---- scene editing ---- */
   const updateScene = useCallback(
     (fn: (s: Scene) => Scene) =>
-      setSave((prev) => ({ ...prev, scenes: prev.scenes.map((s) => (s.id === prev.activeId ? fn(s) : s)) })),
+      setSave((prev) => ({
+        ...prev,
+        scenes: prev.scenes.map((s) => (s.id === prev.activeId ? fn(s) : s)),
+      })),
     [],
   );
   const updateLayer = useCallback(
     (id: string, patch: Partial<Layer>) =>
-      updateScene((s) => ({ ...s, layers: s.layers.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      updateScene((s) => ({
+        ...s,
+        layers: s.layers.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+      })),
     [updateScene],
   );
   const addLayer = (kind: LayerKind, extra: Partial<Layer> = {}) => {
@@ -173,7 +237,8 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => addLayer("image", { name: file.name.replace(/\.[^.]+$/, ""), image: String(reader.result) });
+    reader.onload = () =>
+      addLayer("image", { name: file.name.replace(/\.[^.]+$/, ""), image: String(reader.result) });
     reader.readAsDataURL(file);
   };
 
@@ -182,9 +247,38 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     () =>
       saveStudio({
         ...save,
-        prefs: { camId, micId, camOn, camRes, ps5Vol, micVol, monitor, padOn, preset, picked, adaptive, uploadKbps },
+        prefs: {
+          chatChannel,
+          camId,
+          micId,
+          camOn,
+          camRes,
+          ps5Vol,
+          micVol,
+          monitor,
+          padOn,
+          preset,
+          picked,
+          adaptive,
+          uploadKbps,
+        },
       }),
-    [save, camId, micId, camOn, camRes, ps5Vol, micVol, monitor, padOn, preset, picked, adaptive, uploadKbps],
+    [
+      save,
+      chatChannel,
+      camId,
+      micId,
+      camOn,
+      camRes,
+      ps5Vol,
+      micVol,
+      monitor,
+      padOn,
+      preset,
+      picked,
+      adaptive,
+      uploadKbps,
+    ],
   );
 
   /* ---- mount: engines, status, devices ---- */
@@ -196,7 +290,10 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     void mixer.resume();
     void bridge.ps5Status().then(setStatus);
     const off = bridge.subscribePs5Status(setStatus);
-    const refreshDevices = () => void listDevices().then(setDevices).catch(() => undefined);
+    const refreshDevices = () =>
+      void listDevices()
+        .then(setDevices)
+        .catch(() => undefined);
     refreshDevices();
     // device names stay blank until the app has been allowed to open a microphone once
     void navigator.mediaDevices
@@ -205,7 +302,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         s.getTracks().forEach((t) => t.stop());
         refreshDevices();
       })
-      .catch((e) => setProblem(`Microphone: ${e instanceof Error ? `${e.name} - ${e.message}` : "could not open"}. Check Windows Settings > Privacy > Microphone > "Let desktop apps access your microphone".`));
+      .catch((e) =>
+        setProblem(
+          `Microphone: ${e instanceof Error ? `${e.name} - ${e.message}` : "could not open"}. Check Windows Settings > Privacy > Microphone > "Let desktop apps access your microphone".`,
+        ),
+      );
     navigator.mediaDevices?.addEventListener?.("devicechange", refreshDevices);
     return () => {
       off();
@@ -239,10 +340,18 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       lastFrames = feed.frames;
       const kbps = Math.round(((enc.sentBytes - lastBytes) * 8) / 1000);
       lastBytes = enc.sentBytes;
-      setMeters({ ps5: mixer.ps5Db(), mic: mixer.micDb(), song: mixer.songDb(), fps, ps5Live: feed.live, kbps });
+      setMeters({
+        ps5: mixer.ps5Db(),
+        mic: mixer.micDb(),
+        song: mixer.songDb(),
+        fps,
+        ps5Live: feed.live,
+        kbps,
+      });
     }, 1000);
     const fast = window.setInterval(
-      () => setMeters((m) => ({ ...m, ps5: mixer.ps5Db(), mic: mixer.micDb(), song: mixer.songDb() })),
+      () =>
+        setMeters((m) => ({ ...m, ps5: mixer.ps5Db(), mic: mixer.micDb(), song: mixer.songDb() })),
       120,
     );
     return () => {
@@ -262,7 +371,9 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   useEffect(() => mixer.setMicVolume(micVol), [mixer, micVol]);
   useEffect(() => mixer.setMonitor(monitor), [mixer, monitor]);
   useEffect(() => {
-    void mixer.setMic(micId || null).catch((e) => setProblem(`Microphone: ${e instanceof Error ? e.message : "could not open"}`));
+    void mixer
+      .setMic(micId || null)
+      .catch((e) => setProblem(`Microphone: ${e instanceof Error ? e.message : "could not open"}`));
   }, [micId, mixer]);
   useEffect(() => {
     let cancelled = false;
@@ -338,8 +449,37 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const sceneAudio = scene.audio;
   const songMeta = sceneAudio?.song ?? null;
   useEffect(() => {
-    mixer.setMutes(Boolean(sceneAudio?.ps5Muted), Boolean(sceneAudio?.micMuted));
-  }, [mixer, sceneAudio?.ps5Muted, sceneAudio?.micMuted]);
+    mixer.setMutes(Boolean(sceneAudio?.ps5Muted), Boolean(sceneAudio?.micMuted) || micOverride);
+  }, [mixer, sceneAudio?.ps5Muted, sceneAudio?.micMuted, micOverride]);
+
+  /* ---- panic: cut to the Be right back scene and mute the mic; press again to come back ---- */
+  const savedRef = useRef(save);
+  savedRef.current = save;
+  const panicFrom = useRef<string | null>(null);
+  const togglePanic = useCallback(() => {
+    const cur = savedRef.current;
+    if (panicFrom.current) {
+      const back = cur.scenes.find((s) => s.id === panicFrom.current);
+      panicFrom.current = null;
+      setMicOverride(false);
+      if (back) setSave((prev) => ({ ...prev, activeId: back.id }));
+      return;
+    }
+    const brb = cur.scenes.find((s) => /right back|brb/i.test(s.name));
+    if (!brb) return;
+    panicFrom.current = cur.activeId;
+    setMicOverride(true);
+    setSave((prev) => ({ ...prev, activeId: brb.id }));
+    setSelectedId(null);
+  }, []);
+  useEffect(
+    () =>
+      bridge.subscribeHotkeys((action) => {
+        if (action === "panic") togglePanic();
+        else setMicOverride((m) => !m);
+      }),
+    [togglePanic],
+  );
   useEffect(() => {
     let cancelled = false;
     if (!songMeta) {
@@ -351,7 +491,9 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         const blob = await getSong(songMeta.id);
         if (cancelled) return;
         if (!blob) {
-          setProblem(`The song for "${scene.name}" is missing from this PC's storage. Choose it again.`);
+          setProblem(
+            `The song for "${scene.name}" is missing from this PC's storage. Choose it again.`,
+          );
           return;
         }
         await mixer.resume();
@@ -381,7 +523,14 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       const id = uid();
       await putSong(id, file);
       const old = sceneAudio?.song;
-      updateAudio({ song: { id, name: file.name.replace(/\.[^.]+$/, ""), volume: old?.volume ?? 0.6, loop: true } });
+      updateAudio({
+        song: {
+          id,
+          name: file.name.replace(/\.[^.]+$/, ""),
+          volume: old?.volume ?? 0.6,
+          loop: true,
+        },
+      });
       if (old) void deleteSong(old.id);
     } catch {
       setProblem("Could not keep that song on this PC (browser storage refused it).");
@@ -395,9 +544,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
 
   /* ---- upload speed test, and a live bitrate guard ---- */
   const recommended = uploadKbps
-    ? [...PRESETS].reverse().find((p) => p.kbps <= uploadKbps * 0.7) ?? PRESETS[0]
+    ? ([...PRESETS].reverse().find((p) => p.kbps <= uploadKbps * 0.7) ?? PRESETS[0])
     : null;
-  const rateCap = uploadKbps ? Math.max(1200, Math.min(preview.kbps, Math.floor(uploadKbps * 0.7))) : preview.kbps;
+  const rateCap = uploadKbps
+    ? Math.max(1200, Math.min(preview.kbps, Math.floor(uploadKbps * 0.7)))
+    : preview.kbps;
   const statusRef = useRef(status);
   statusRef.current = status;
   const testUpload = async () => {
@@ -408,7 +559,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       setUploadKbps(r.kbps);
       setNetNote(`Measured ${(r.kbps / 1000).toFixed(1)} Mbps up in ${r.seconds}s.`);
     } catch (error) {
-      setNetNote(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "") : "Test failed.");
+      setNetNote(
+        error instanceof Error
+          ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "")
+          : "Test failed.",
+      );
     } finally {
       setTesting(false);
     }
@@ -429,11 +584,27 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         // the connection could not carry the stream: step down and ask for a fresh keyframe
         rate = Math.max(1200, Math.round(rate * 0.8));
         calm = 0;
-        if (enc.setBitrate(rate, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rate })) setLiveRate(rate);
+        if (
+          enc.setBitrate(rate, {
+            width: preview.w,
+            height: preview.h,
+            fps: preview.fps,
+            bitrateKbps: rate,
+          })
+        )
+          setLiveRate(rate);
       } else if (++calm >= 6 && rate < rateCap) {
         rate = Math.min(rateCap, Math.round(rate * 1.1));
         calm = 0;
-        if (enc.setBitrate(rate, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rate })) setLiveRate(rate);
+        if (
+          enc.setBitrate(rate, {
+            width: preview.w,
+            height: preview.h,
+            fps: preview.fps,
+            bitrateKbps: rate,
+          })
+        )
+          setLiveRate(rate);
       }
       lastDropped = dropped;
     }, 5000);
@@ -445,8 +616,12 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === "m" || e.key === "M") setMicOverride((m) => !m);
+      if (e.key === "b" || e.key === "B") togglePanic();
       const n = Number(e.key);
       if (n >= 1 && n <= 9 && save.scenes[n - 1]) {
+        panicFrom.current = null;
         setSave((prev) => ({ ...prev, activeId: prev.scenes[n - 1].id }));
         setSelectedId(null);
       }
@@ -454,7 +629,7 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [save.scenes, selectedId]);
+  }, [save.scenes, selectedId, togglePanic]);
 
   /* ---- PS5 + stream actions ---- */
   const run = useCallback(async (job: () => Promise<Ps5Status | void>) => {
@@ -514,7 +689,12 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         carry = joined.slice(offset);
       };
       try {
-        await enc.start(comp.canvas, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rateCap });
+        await enc.start(comp.canvas, {
+          width: preview.w,
+          height: preview.h,
+          fps: preview.fps,
+          bitrateKbps: rateCap,
+        });
       } catch (error) {
         mixer.onPcm = null;
         await bridge.ps5EndLive();
@@ -531,14 +711,22 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     });
 
   /* ---- drag / resize layers on the canvas ---- */
-  const drag = useRef<{ id: string; mode: "move" | "size"; sx: number; sy: number; layer: Layer } | null>(null);
+  const drag = useRef<{
+    id: string;
+    mode: "move" | "size";
+    sx: number;
+    sy: number;
+    layer: Layer;
+  } | null>(null);
   const toFraction = (clientX: number, clientY: number) => {
     const r = comp.canvas.getBoundingClientRect();
     return { fx: (clientX - r.left) / r.width, fy: (clientY - r.top) / r.height };
   };
   const onStageDown = (e: React.PointerEvent) => {
     const { fx, fy } = toFraction(e.clientX, e.clientY);
-    const hit = [...scene.layers].reverse().find((l) => l.visible && fx >= l.x && fx <= l.x + l.w && fy >= l.y && fy <= l.y + l.h);
+    const hit = [...scene.layers]
+      .reverse()
+      .find((l) => l.visible && fx >= l.x && fx <= l.x + l.w && fy >= l.y && fy <= l.y + l.h);
     setSelectedId(hit?.id ?? null);
     if (hit) {
       drag.current = { id: hit.id, mode: "move", sx: fx, sy: fy, layer: hit };
@@ -558,7 +746,10 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     const dx = fx - d.sx;
     const dy = fy - d.sy;
     if (d.mode === "move") {
-      updateLayer(d.id, { x: Math.round((d.layer.x + dx) * 1000) / 1000, y: Math.round((d.layer.y + dy) * 1000) / 1000 });
+      updateLayer(d.id, {
+        x: Math.round((d.layer.x + dx) * 1000) / 1000,
+        y: Math.round((d.layer.y + dy) * 1000) / 1000,
+      });
     } else {
       updateLayer(d.id, {
         w: Math.max(0.02, Math.round((d.layer.w + dx) * 1000) / 1000),
@@ -573,6 +764,98 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const ordered = useMemo(() => [...scene.layers].reverse(), [scene.layers]);
   const ps5Flowing = meters.ps5Live;
 
+  /* ---- chat feed from the main process into the overlay layers ---- */
+  useEffect(
+    () =>
+      bridge.subscribeChat((event) => {
+        if (event.type === "message")
+          chatFeed.pushLine({
+            id: event.id,
+            user: event.user,
+            color: event.color,
+            text: event.text,
+          });
+        else if (event.type === "alert")
+          chatFeed.pushAlert({ id: event.id, title: event.title, detail: event.detail });
+        else setChatState({ state: event.state, detail: event.detail });
+      }),
+    [],
+  );
+  const connectChat = () =>
+    run(async () => {
+      await bridge.chatConnect(chatChannel);
+    });
+
+  /* ---- ready check ---- */
+  useEffect(() => {
+    if (meters.mic > -80) setMicHeard(true);
+  }, [meters.mic]);
+  const missingKeys = PLATFORMS.filter(
+    (p) => picked[p.id] && !status?.destinations.find((d) => d.platform === p.id)?.keySet,
+  );
+  const checks: Array<{ id: string; ok: boolean; label: string; note: string }> = [
+    {
+      id: "ps5",
+      ok: ps5Flowing,
+      label: "PS5 picture",
+      note: ps5Flowing ? "connected" : ps5Running ? "connecting…" : "not started",
+    },
+    {
+      id: "mic",
+      ok: micHeard || Boolean(sceneAudio?.micMuted),
+      label: "Microphone",
+      note: sceneAudio?.micMuted
+        ? "muted in this scene"
+        : micHeard
+          ? "I can hear it"
+          : devices.mics.length
+            ? "say something — no sound yet"
+            : "none found",
+    },
+    {
+      id: "keys",
+      ok: targets.length > 0 && missingKeys.length === 0,
+      label: "Stream keys",
+      note:
+        targets.length === 0
+          ? "tick a destination and save its key"
+          : missingKeys.length
+            ? `no key for ${missingKeys.map((p) => p.label).join(", ")}`
+            : `${targets.map((t) => t.label).join(" + ")} ready`,
+    },
+    {
+      id: "net",
+      ok: uploadKbps > 0,
+      label: "Upload speed",
+      note: uploadKbps
+        ? `${(uploadKbps / 1000).toFixed(1)} Mbps, sending at most ${(rateCap / 1000).toFixed(1)}`
+        : "not tested yet",
+    },
+    ...(clockOn
+      ? [
+          {
+            id: "clock",
+            ok: false,
+            label: "Test clock",
+            note: "still on — turn it off for a real show",
+          },
+        ]
+      : []),
+  ];
+  const allReady = checks.every((c) => c.ok);
+  const getReady = () =>
+    run(async () => {
+      if (!ps5Running) {
+        await bridge.ps5Start({
+          res: preview.h >= 1080 ? 1080 : 720,
+          fps: 30,
+          bitrateKbps: preview.h >= 1080 ? 10000 : 7000,
+        });
+      }
+      if (!uploadKbps) await testUpload();
+      await mixer.resume();
+    });
+
   return (
     <main className="sx" data-testid="studio-live">
       <video ref={videoRef} className="sx-hidden-video" muted playsInline />
@@ -582,7 +865,9 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         </button>
         <span className="golive__tag">STUDIO · PS5 + CAMERA + OVERLAYS</span>
         <span className="sx-output-note">
-          {live ? "Encoding this scene once on this PC" : "Output: 1 encode on this PC when live"}
+          {micOverride && <strong className="sx-muted">MIC MUTED · M or Ctrl+Alt+M · </strong>}
+          {live ? "Encoding this scene once on this PC" : "Output: 1 encode on this PC when live"} ·
+          B or Ctrl+Alt+B = Be right back
         </span>
         <span className={`golive__badge ${live ? "is-live" : ps5Flowing ? "is-on" : ""}`}>
           <i />
@@ -622,7 +907,12 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               <button type="button" className="button button--ghost" onClick={duplicateScene}>
                 Duplicate
               </button>
-              <button type="button" className="button button--ghost" onClick={deleteScene} disabled={save.scenes.length <= 1}>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={deleteScene}
+                disabled={save.scenes.length <= 1}
+              >
                 Delete
               </button>
             </div>
@@ -640,10 +930,20 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               <span className="sx-hint">saved with the scene</span>
             </header>
             <label className="sx-toggle">
-              <input type="checkbox" checked={Boolean(sceneAudio?.micMuted)} onChange={(e) => updateAudio({ micMuted: e.target.checked })} /> Mute my microphone
+              <input
+                type="checkbox"
+                checked={Boolean(sceneAudio?.micMuted)}
+                onChange={(e) => updateAudio({ micMuted: e.target.checked })}
+              />{" "}
+              Mute my microphone
             </label>
             <label className="sx-toggle">
-              <input type="checkbox" checked={Boolean(sceneAudio?.ps5Muted)} onChange={(e) => updateAudio({ ps5Muted: e.target.checked })} /> Mute the PS5 game sound
+              <input
+                type="checkbox"
+                checked={Boolean(sceneAudio?.ps5Muted)}
+                onChange={(e) => updateAudio({ ps5Muted: e.target.checked })}
+              />{" "}
+              Mute the PS5 game sound
             </label>
             <div className="sx-song">
               {songMeta ? (
@@ -665,18 +965,34 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                       max={1}
                       step={0.01}
                       value={songMeta.volume}
-                      onChange={(e) => updateAudio({ song: { ...songMeta, volume: Number(e.target.value) } })}
+                      onChange={(e) =>
+                        updateAudio({ song: { ...songMeta, volume: Number(e.target.value) } })
+                      }
                     />
                   </label>
                   <label className="sx-toggle">
-                    <input type="checkbox" checked={songMeta.loop} onChange={(e) => updateAudio({ song: { ...songMeta, loop: e.target.checked } })} /> Repeat
+                    <input
+                      type="checkbox"
+                      checked={songMeta.loop}
+                      onChange={(e) =>
+                        updateAudio({ song: { ...songMeta, loop: e.target.checked } })
+                      }
+                    />{" "}
+                    Repeat
                   </label>
-                  <small className="deck__hint">Plays when this scene is on air and fades out when you leave it. Tick “hear on this PC” to listen.</small>
+                  <small className="deck__hint">
+                    Plays when this scene is on air and fades out when you leave it. Tick “hear on
+                    this PC” to listen.
+                  </small>
                 </>
               ) : (
                 <label className="button button--ghost sx-file">
                   + Song for this scene
-                  <input type="file" accept="audio/*" onChange={(e) => void pickSong(e.target.files?.[0])} />
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => void pickSong(e.target.files?.[0])}
+                  />
                 </label>
               )}
             </div>
@@ -689,36 +1005,90 @@ export function StudioLive({ onBack }: { onBack(): void }) {
             <ul className="sx-layers">
               {ordered.map((l) => (
                 <li key={l.id} className={l.id === selectedId ? "is-selected" : ""}>
-                  <button type="button" className="sx-eye" aria-label={l.visible ? "Hide" : "Show"} onClick={() => updateLayer(l.id, { visible: !l.visible })}>
+                  <button
+                    type="button"
+                    className="sx-eye"
+                    aria-label={l.visible ? "Hide" : "Show"}
+                    onClick={() => updateLayer(l.id, { visible: !l.visible })}
+                  >
                     {l.visible ? "●" : "○"}
                   </button>
                   <button type="button" className="sx-name" onClick={() => setSelectedId(l.id)}>
                     <strong>{l.name}</strong>
                     <small>{KIND_LABEL[l.kind]}</small>
                   </button>
-                  <button type="button" className="sx-mini" aria-label="Bring forward" onClick={() => moveLayer(l.id, 1)}>
+                  <button
+                    type="button"
+                    className="sx-mini"
+                    aria-label="Bring forward"
+                    onClick={() => moveLayer(l.id, 1)}
+                  >
                     ↑
                   </button>
-                  <button type="button" className="sx-mini" aria-label="Send back" onClick={() => moveLayer(l.id, -1)}>
+                  <button
+                    type="button"
+                    className="sx-mini"
+                    aria-label="Send back"
+                    onClick={() => moveLayer(l.id, -1)}
+                  >
                     ↓
                   </button>
                 </li>
               ))}
-              {ordered.length === 0 && <li className="sx-empty">Nothing here yet. Add a source below.</li>}
+              {ordered.length === 0 && (
+                <li className="sx-empty">Nothing here yet. Add a source below.</li>
+              )}
             </ul>
             <div className="sx-adds">
-              <button type="button" className="button button--ghost" onClick={() => addLayer("ps5")}>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("ps5")}
+              >
                 + PS5
               </button>
-              <button type="button" className="button button--ghost" onClick={() => addLayer("camera")}>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("camera")}
+              >
                 + Camera
               </button>
-              <button type="button" className="button button--ghost" onClick={() => addLayer("text")}>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("text")}
+              >
                 + Text
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("chat")}
+              >
+                + Chat
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("alert")}
+              >
+                + Alerts
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => addLayer("counter")}
+              >
+                + Counter
               </button>
               <label className="button button--ghost sx-file">
                 + Image
-                <input type="file" accept="image/*" onChange={(e) => pickImage(e.target.files?.[0])} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => pickImage(e.target.files?.[0])}
+                />
               </label>
             </div>
           </section>
@@ -726,11 +1096,22 @@ export function StudioLive({ onBack }: { onBack(): void }) {
 
         {/* ---------------- center: program canvas ---------------- */}
         <section className="sx-center">
-          <div className="sx-stage" ref={stageRef} onPointerDown={onStageDown} onPointerMove={onStageMove} onPointerUp={onStageUp}>
+          <div
+            className="sx-stage"
+            ref={stageRef}
+            onPointerDown={onStageDown}
+            onPointerMove={onStageMove}
+            onPointerUp={onStageUp}
+          >
             {selected && selected.visible && (
               <div
                 className="sx-box"
-                style={{ left: `${selected.x * 100}%`, top: `${selected.y * 100}%`, width: `${selected.w * 100}%`, height: `${selected.h * 100}%` }}
+                style={{
+                  left: `${selected.x * 100}%`,
+                  top: `${selected.y * 100}%`,
+                  width: `${selected.w * 100}%`,
+                  height: `${selected.h * 100}%`,
+                }}
               >
                 <span className="sx-box__label">{selected.name}</span>
                 <span className="sx-box__handle" onPointerDown={(e) => onSizeDown(e, selected)} />
@@ -753,18 +1134,35 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               <header>
                 <strong>PS5 game</strong>
                 <label>
-                  <input type="checkbox" checked={monitor} onChange={(e) => setMonitor(e.target.checked)} /> hear on this PC
+                  <input
+                    type="checkbox"
+                    checked={monitor}
+                    onChange={(e) => setMonitor(e.target.checked)}
+                  />{" "}
+                  hear on this PC
                 </label>
               </header>
               <div className="sx-meter">
                 <i style={{ width: `${dbToPercent(meters.ps5)}%` }} />
               </div>
-              <input type="range" min={0} max={1.5} step={0.01} value={ps5Vol} onChange={(e) => setPs5Vol(Number(e.target.value))} aria-label="PS5 volume" />
+              <input
+                type="range"
+                min={0}
+                max={1.5}
+                step={0.01}
+                value={ps5Vol}
+                onChange={(e) => setPs5Vol(Number(e.target.value))}
+                aria-label="PS5 volume"
+              />
             </div>
             <div className="sx-strip">
               <header>
                 <strong>Microphone</strong>
-                <select value={micId} onChange={(e) => setMicId(e.target.value)} aria-label="Microphone">
+                <select
+                  value={micId}
+                  onChange={(e) => setMicId(e.target.value)}
+                  aria-label="Microphone"
+                >
                   <option value="">Off</option>
                   {devices.mics.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -776,12 +1174,24 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               <div className="sx-meter">
                 <i style={{ width: `${dbToPercent(meters.mic)}%` }} />
               </div>
-              <input type="range" min={0} max={2} step={0.01} value={micVol} onChange={(e) => setMicVol(Number(e.target.value))} aria-label="Microphone volume" />
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={micVol}
+                onChange={(e) => setMicVol(Number(e.target.value))}
+                aria-label="Microphone volume"
+              />
             </div>
             <div className="sx-strip">
               <header>
                 <strong>Camera</strong>
-                <select value={camId} onChange={(e) => setCamId(e.target.value)} aria-label="Camera">
+                <select
+                  value={camId}
+                  onChange={(e) => setCamId(e.target.value)}
+                  aria-label="Camera"
+                >
                   <option value="">Default</option>
                   {devices.cameras.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -792,9 +1202,18 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               </header>
               <div className="sx-row">
                 <label className="sx-toggle">
-                  <input type="checkbox" checked={camOn} onChange={(e) => setCamOn(e.target.checked)} /> Camera on
+                  <input
+                    type="checkbox"
+                    checked={camOn}
+                    onChange={(e) => setCamOn(e.target.checked)}
+                  />{" "}
+                  Camera on
                 </label>
-                <select value={camRes} aria-label="Camera resolution" onChange={(e) => setCamRes(e.target.value as "720" | "1080")}>
+                <select
+                  value={camRes}
+                  aria-label="Camera resolution"
+                  onChange={(e) => setCamRes(e.target.value as "720" | "1080")}
+                >
                   <option value="720">720p</option>
                   <option value="1080">1080p</option>
                 </select>
@@ -808,14 +1227,22 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         <aside className="sx-col">
           <section className="sx-panel">
             <header>
-              <span className="eyebrow">{selected ? `${selected.name.toUpperCase()} · ${KIND_LABEL[selected.kind].toUpperCase()}` : "PROPERTIES"}</span>
+              <span className="eyebrow">
+                {selected
+                  ? `${selected.name.toUpperCase()} · ${KIND_LABEL[selected.kind].toUpperCase()}`
+                  : "PROPERTIES"}
+              </span>
             </header>
             {!selected && <p className="sx-empty">Click a source on the canvas or in the list.</p>}
             {selected && (
               <div className="sx-props">
                 <label>
                   Name
-                  <input className="sx-input" value={selected.name} onChange={(e) => updateLayer(selected.id, { name: e.target.value })} />
+                  <input
+                    className="sx-input"
+                    value={selected.name}
+                    onChange={(e) => updateLayer(selected.id, { name: e.target.value })}
+                  />
                 </label>
                 {selected.kind === "text" && selected.text && (
                   <>
@@ -825,7 +1252,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                         className="sx-input"
                         rows={2}
                         value={selected.text.value}
-                        onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, value: e.target.value } })}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            text: { ...selected.text!, value: e.target.value },
+                          })
+                        }
                       />
                     </label>
                     <div className="sx-row">
@@ -837,25 +1268,62 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                           min={10}
                           max={400}
                           value={selected.text.size}
-                          onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, size: Number(e.target.value) || 10 } })}
+                          onChange={(e) =>
+                            updateLayer(selected.id, {
+                              text: { ...selected.text!, size: Number(e.target.value) || 10 },
+                            })
+                          }
                         />
                       </label>
                       <label>
                         Colour
-                        <input type="color" value={selected.text.color} onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, color: e.target.value } })} />
+                        <input
+                          type="color"
+                          value={selected.text.color}
+                          onChange={(e) =>
+                            updateLayer(selected.id, {
+                              text: { ...selected.text!, color: e.target.value },
+                            })
+                          }
+                        />
                       </label>
                     </div>
                     <div className="sx-row">
                       <label className="sx-toggle">
-                        <input type="checkbox" checked={selected.text.bold} onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, bold: e.target.checked } })} /> Bold
+                        <input
+                          type="checkbox"
+                          checked={selected.text.bold}
+                          onChange={(e) =>
+                            updateLayer(selected.id, {
+                              text: { ...selected.text!, bold: e.target.checked },
+                            })
+                          }
+                        />{" "}
+                        Bold
                       </label>
                       <label className="sx-toggle">
-                        <input type="checkbox" checked={selected.text.outline} onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, outline: e.target.checked } })} /> Outline
+                        <input
+                          type="checkbox"
+                          checked={selected.text.outline}
+                          onChange={(e) =>
+                            updateLayer(selected.id, {
+                              text: { ...selected.text!, outline: e.target.checked },
+                            })
+                          }
+                        />{" "}
+                        Outline
                       </label>
                       <select
                         value={selected.text.align}
                         aria-label="Alignment"
-                        onChange={(e) => updateLayer(selected.id, { text: { ...selected.text!, align: e.target.value as "left" | "center" | "right" } })}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            text: {
+                              ...selected.text!,
+                              align: e.target.value as "left" | "center" | "right",
+                            },
+                          })
+                        }
                       >
                         <option value="left">Left</option>
                         <option value="center">Centre</option>
@@ -864,64 +1332,302 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                     </div>
                   </>
                 )}
-                {selected.kind !== "text" && (
+                {selected.kind === "chat" && selected.chat && (
+                  <>
+                    <label>
+                      Lines shown
+                      <input
+                        type="range"
+                        min={3}
+                        max={20}
+                        step={1}
+                        value={selected.chat.lines}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            chat: { ...selected.chat!, lines: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Text size
+                      <input
+                        type="range"
+                        min={14}
+                        max={60}
+                        step={1}
+                        value={selected.chat.size}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            chat: { ...selected.chat!, size: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Fade after (seconds, 0 = stay)
+                      <input
+                        type="range"
+                        min={0}
+                        max={120}
+                        step={5}
+                        value={selected.chat.fadeSec}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            chat: { ...selected.chat!, fadeSec: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <small className="deck__hint">
+                      Connect a channel in the CHAT panel on the right. Move and resize it on the
+                      canvas.
+                    </small>
+                  </>
+                )}
+                {selected.kind === "alert" && selected.alert && (
+                  <>
+                    <label>
+                      Text size
+                      <input
+                        type="range"
+                        min={20}
+                        max={80}
+                        step={1}
+                        value={selected.alert.size}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            alert: { ...selected.alert!, size: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Seconds on screen
+                      <input
+                        type="range"
+                        min={2}
+                        max={15}
+                        step={1}
+                        value={selected.alert.seconds}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            alert: { ...selected.alert!, seconds: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Colour
+                      <input
+                        type="color"
+                        value={selected.alert.color}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            alert: { ...selected.alert!, color: e.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={() =>
+                        chatFeed.pushAlert({
+                          id: uid(),
+                          title: "Test subscribed",
+                          detail: "3 months",
+                        })
+                      }
+                    >
+                      Test alert
+                    </button>
+                  </>
+                )}
+                {selected.kind === "counter" && selected.counter && (
+                  <>
+                    <label>
+                      Label
+                      <input
+                        type="text"
+                        value={selected.counter.label}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            counter: { ...selected.counter!, label: e.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    <div className="sx-row">
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() =>
+                          updateLayer(selected.id, {
+                            counter: { ...selected.counter!, value: selected.counter!.value - 1 },
+                          })
+                        }
+                      >
+                        −1
+                      </button>
+                      <strong>{selected.counter.value}</strong>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() =>
+                          updateLayer(selected.id, {
+                            counter: { ...selected.counter!, value: selected.counter!.value + 1 },
+                          })
+                        }
+                      >
+                        +1
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() =>
+                          updateLayer(selected.id, { counter: { ...selected.counter!, value: 0 } })
+                        }
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    <label>
+                      Text size
+                      <input
+                        type="range"
+                        min={20}
+                        max={90}
+                        step={1}
+                        value={selected.counter.size}
+                        onChange={(e) =>
+                          updateLayer(selected.id, {
+                            counter: { ...selected.counter!, size: Number(e.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+                {(selected.kind === "ps5" ||
+                  selected.kind === "camera" ||
+                  selected.kind === "image") && (
                   <label>
                     Fit
-                    <select value={selected.fit} onChange={(e) => updateLayer(selected.id, { fit: e.target.value as Layer["fit"] })}>
+                    <select
+                      value={selected.fit}
+                      onChange={(e) =>
+                        updateLayer(selected.id, { fit: e.target.value as Layer["fit"] })
+                      }
+                    >
                       <option value="contain">Fit inside</option>
                       <option value="cover">Fill (crop)</option>
                       <option value="stretch">Stretch</option>
                     </select>
                   </label>
                 )}
-                {selected.kind === "camera" && (() => {
-                  const look: CameraLook = { ...defaultCameraLook(), ...selected.cam };
-                  const setLook = (patch: Partial<CameraLook>) => updateLayer(selected.id, { cam: { ...look, ...patch } });
-                  const range = (label: string, key: "zoom" | "shiftX" | "shiftY" | "brightness" | "contrast" | "saturation", min: number, max: number, step: number) => (
-                    <label>
-                      {label}
-                      <input type="range" min={min} max={max} step={step} value={look[key]} onChange={(e) => setLook({ [key]: Number(e.target.value) })} />
-                    </label>
-                  );
-                  return (
-                    <>
-                      <div className="sx-row">
-                        <label className="sx-toggle">
-                          <input type="checkbox" checked={Boolean(selected.mirror)} onChange={(e) => updateLayer(selected.id, { mirror: e.target.checked })} /> Mirror
-                        </label>
-                        <select value={look.shape} aria-label="Camera shape" onChange={(e) => setLook({ shape: e.target.value as CameraLook["shape"] })}>
-                          <option value="rect">Rectangle</option>
-                          <option value="rounded">Rounded</option>
-                          <option value="circle">Circle</option>
-                        </select>
-                      </div>
-                      {range("Zoom in", "zoom", 1, 3, 0.01)}
-                      {look.zoom > 1 && range("Move left / right", "shiftX", -1, 1, 0.01)}
-                      {look.zoom > 1 && range("Move up / down", "shiftY", -1, 1, 0.01)}
-                      {range("Brightness", "brightness", 0.5, 1.5, 0.01)}
-                      {range("Contrast", "contrast", 0.5, 1.5, 0.01)}
-                      {range("Colour", "saturation", 0, 2, 0.01)}
-                      <div className="sx-row">
-                        <label>
-                          Outline
-                          <input type="range" min={0} max={16} step={1} value={look.borderWidth} onChange={(e) => setLook({ borderWidth: Number(e.target.value) })} />
-                        </label>
-                        <label>
-                          Outline colour
-                          <input type="color" value={look.borderColor} onChange={(e) => setLook({ borderColor: e.target.value })} />
-                        </label>
-                      </div>
-                      <button type="button" className="button button--ghost" onClick={() => updateLayer(selected.id, { cam: defaultCameraLook() })}>
-                        Reset camera look
-                      </button>
-                    </>
-                  );
-                })()}
+                {selected.kind === "camera" &&
+                  (() => {
+                    const look: CameraLook = { ...defaultCameraLook(), ...selected.cam };
+                    const setLook = (patch: Partial<CameraLook>) =>
+                      updateLayer(selected.id, { cam: { ...look, ...patch } });
+                    const range = (
+                      label: string,
+                      key: "zoom" | "shiftX" | "shiftY" | "brightness" | "contrast" | "saturation",
+                      min: number,
+                      max: number,
+                      step: number,
+                    ) => (
+                      <label>
+                        {label}
+                        <input
+                          type="range"
+                          min={min}
+                          max={max}
+                          step={step}
+                          value={look[key]}
+                          onChange={(e) => setLook({ [key]: Number(e.target.value) })}
+                        />
+                      </label>
+                    );
+                    return (
+                      <>
+                        <div className="sx-row">
+                          <label className="sx-toggle">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(selected.mirror)}
+                              onChange={(e) =>
+                                updateLayer(selected.id, { mirror: e.target.checked })
+                              }
+                            />{" "}
+                            Mirror
+                          </label>
+                          <select
+                            value={look.shape}
+                            aria-label="Camera shape"
+                            onChange={(e) =>
+                              setLook({ shape: e.target.value as CameraLook["shape"] })
+                            }
+                          >
+                            <option value="rect">Rectangle</option>
+                            <option value="rounded">Rounded</option>
+                            <option value="circle">Circle</option>
+                          </select>
+                        </div>
+                        {range("Zoom in", "zoom", 1, 3, 0.01)}
+                        {look.zoom > 1 && range("Move left / right", "shiftX", -1, 1, 0.01)}
+                        {look.zoom > 1 && range("Move up / down", "shiftY", -1, 1, 0.01)}
+                        {range("Brightness", "brightness", 0.5, 1.5, 0.01)}
+                        {range("Contrast", "contrast", 0.5, 1.5, 0.01)}
+                        {range("Colour", "saturation", 0, 2, 0.01)}
+                        <div className="sx-row">
+                          <label>
+                            Outline
+                            <input
+                              type="range"
+                              min={0}
+                              max={16}
+                              step={1}
+                              value={look.borderWidth}
+                              onChange={(e) => setLook({ borderWidth: Number(e.target.value) })}
+                            />
+                          </label>
+                          <label>
+                            Outline colour
+                            <input
+                              type="color"
+                              value={look.borderColor}
+                              onChange={(e) => setLook({ borderColor: e.target.value })}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          className="button button--ghost"
+                          onClick={() => updateLayer(selected.id, { cam: defaultCameraLook() })}
+                        >
+                          Reset camera look
+                        </button>
+                      </>
+                    );
+                  })()}
                 <label>
                   Opacity
-                  <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateLayer(selected.id, { opacity: Number(e.target.value) })} />
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={selected.opacity}
+                    onChange={(e) => updateLayer(selected.id, { opacity: Number(e.target.value) })}
+                  />
                 </label>
-                <button type="button" className="button button--ghost" onClick={() => removeLayer(selected.id)}>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => removeLayer(selected.id)}
+                >
                   Remove source
                 </button>
               </div>
@@ -931,15 +1637,27 @@ export function StudioLive({ onBack }: { onBack(): void }) {
           <section className="sx-panel sx-live">
             <header>
               <span className="eyebrow">PS5</span>
-              <span className={`dest__state ${ps5Flowing ? "dest__state--live" : ""}`}>{ps5Flowing ? "connected · real" : ps5Running ? "connecting…" : "off"}</span>
+              <span className={`dest__state ${ps5Flowing ? "dest__state--live" : ""}`}>
+                {ps5Flowing ? "connected · real" : ps5Running ? "connecting…" : "off"}
+              </span>
             </header>
             <div className="sx-row">
               {!ps5Running ? (
-                <button type="button" className="button button--primary" disabled={!status?.ready || busy} onClick={() => void startPs5()}>
+                <button
+                  type="button"
+                  className="button button--primary"
+                  disabled={!status?.ready || busy}
+                  onClick={() => void startPs5()}
+                >
                   Start PS5
                 </button>
               ) : (
-                <button type="button" className="button button--ghost" disabled={live} onClick={() => void run(() => bridge.ps5Stop())}>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={live}
+                  onClick={() => void run(() => bridge.ps5Stop())}
+                >
                   Stop PS5
                 </button>
               )}
@@ -947,10 +1665,16 @@ export function StudioLive({ onBack }: { onBack(): void }) {
             <label className="dest__row">
               <input type="checkbox" checked={padOn} onChange={(e) => setPadOn(e.target.checked)} />
               <strong>Play from this PC</strong>
-              <span className={`dest__state ${padOn && padName ? "dest__state--live" : ""}`}>{!padOn ? "off" : padName ? "controller found" : "none found"}</span>
+              <span className={`dest__state ${padOn && padName ? "dest__state--live" : ""}`}>
+                {!padOn ? "off" : padName ? "controller found" : "none found"}
+              </span>
             </label>
             <label className="dest__row">
-              <input type="checkbox" checked={autoRe} onChange={(e) => setAutoRe(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={autoRe}
+                onChange={(e) => setAutoRe(e.target.checked)}
+              />
               <strong>Auto-reconnect</strong>
               <span className="dest__state">{autoRe ? "on" : "off"}</span>
             </label>
@@ -958,7 +1682,13 @@ export function StudioLive({ onBack }: { onBack(): void }) {
             <span className="eyebrow">QUALITY</span>
             <div className="deck__presets">
               {PRESETS.map((p) => (
-                <button key={p.id} type="button" className={`chip ${preset === p.id ? "chip--on" : ""}`} disabled={live || ps5Running} onClick={() => setPreset(p.id)}>
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`chip ${preset === p.id ? "chip--on" : ""}`}
+                  disabled={live || ps5Running}
+                  onClick={() => setPreset(p.id)}
+                >
                   <strong>{p.label}</strong>
                   <small>{p.note}</small>
                 </button>
@@ -968,19 +1698,32 @@ export function StudioLive({ onBack }: { onBack(): void }) {
             <span className="eyebrow">CONNECTION</span>
             <div className="sx-net">
               <div className="sx-row">
-                <button type="button" className="button button--ghost" disabled={testing || live} onClick={() => void testUpload()}>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={testing || live}
+                  onClick={() => void testUpload()}
+                >
                   {testing ? "Testing…" : "Test my upload"}
                 </button>
-                <span className="dest__state">{uploadKbps ? `${(uploadKbps / 1000).toFixed(1)} Mbps up` : "not tested"}</span>
+                <span className="dest__state">
+                  {uploadKbps ? `${(uploadKbps / 1000).toFixed(1)} Mbps up` : "not tested"}
+                </span>
               </div>
               {netNote && <small className="deck__hint">{netNote}</small>}
               {recommended && (
                 <small className="deck__hint">
-                  Safe stream rate: {(Math.max(1200, Math.floor(uploadKbps * 0.7)) / 1000).toFixed(1)} Mbps (70% of your upload, so the rest is left for everything else).
+                  Safe stream rate:{" "}
+                  {(Math.max(1200, Math.floor(uploadKbps * 0.7)) / 1000).toFixed(1)} Mbps (70% of
+                  your upload, so the rest is left for everything else).
                   {recommended.id !== preset && !live && !ps5Running && (
                     <>
                       {" "}
-                      <button type="button" className="sx-link" onClick={() => setPreset(recommended.id)}>
+                      <button
+                        type="button"
+                        className="sx-link"
+                        onClick={() => setPreset(recommended.id)}
+                      >
                         Use “{recommended.label}”
                       </button>
                     </>
@@ -988,13 +1731,19 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                 </small>
               )}
               <label className="dest__row">
-                <input type="checkbox" checked={adaptive} onChange={(e) => setAdaptive(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={adaptive}
+                  onChange={(e) => setAdaptive(e.target.checked)}
+                />
                 <strong>Keep the stream alive</strong>
-                <span className="dest__state">{live ? `${(liveRate / 1000).toFixed(1)} Mbps now` : adaptive ? "on" : "off"}</span>
+                <span className="dest__state">
+                  {live ? `${(liveRate / 1000).toFixed(1)} Mbps now` : adaptive ? "on" : "off"}
+                </span>
               </label>
               <small className="deck__hint">
-                On: if the connection cannot carry the stream, the rate steps down by a fifth and creeps back up when it is calm.
-                Limit: {(rateCap / 1000).toFixed(1)} Mbps.
+                On: if the connection cannot carry the stream, the rate steps down by a fifth and
+                creeps back up when it is calm. Limit: {(rateCap / 1000).toFixed(1)} Mbps.
               </small>
               <label className="dest__row">
                 <input
@@ -1009,7 +1758,56 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                 <span className="dest__state">{clockOn ? "on" : "off"}</span>
               </label>
               <small className="deck__hint">
-                Test only: puts this PC&apos;s time in the corner. Compare it with the time on your Facebook viewer to read the delay. Turn it off before a real show.
+                Test only: puts this PC&apos;s time in the corner. Compare it with the time on your
+                Facebook viewer to read the delay. Turn it off before a real show.
+              </small>
+            </div>
+
+            <span className="eyebrow">CHAT</span>
+            <div className="sx-net">
+              <div className="dest__key">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Your Twitch channel name"
+                  value={chatChannel}
+                  onChange={(e) => setChatChannel(e.target.value)}
+                />
+                {chatState.state === "off" || chatState.state === "error" ? (
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    disabled={!chatChannel.trim() || busy}
+                    onClick={() => void connectChat()}
+                  >
+                    Connect
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={() => void bridge.chatDisconnect()}
+                  >
+                    Disconnect
+                  </button>
+                )}
+              </div>
+              <span
+                className={`dest__state ${chatState.state === "on" ? "dest__state--live" : ""}`}
+              >
+                {chatState.state === "on"
+                  ? `reading #${chatState.detail} (read only)`
+                  : chatState.state === "connecting"
+                    ? `connecting ${chatState.detail}…`
+                    : chatState.state === "error"
+                      ? chatState.detail || "problem"
+                      : "not connected"}
+              </span>
+              <small className="deck__hint">
+                Reads Twitch chat with no login. Add a “+ Chat” source to show it on the stream, and
+                “+ Alerts” for sub, gift and raid pop-ups. Facebook chat is not here yet: it needs a
+                Facebook access token.
               </small>
             </div>
 
@@ -1019,10 +1817,21 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               return (
                 <div className="dest" key={p.id}>
                   <label className="dest__row">
-                    <input type="checkbox" checked={picked[p.id]} disabled={live} onChange={(e) => setPicked({ ...picked, [p.id]: e.target.checked })} />
+                    <input
+                      type="checkbox"
+                      checked={picked[p.id]}
+                      disabled={live}
+                      onChange={(e) => setPicked({ ...picked, [p.id]: e.target.checked })}
+                    />
                     <strong>{p.label}</strong>
                     <span className={`dest__state dest__state--${dest?.state ?? "idle"}`}>
-                      {dest?.state === "live" ? "live" : dest?.state === "error" ? "retrying" : dest?.keySet ? "key saved" : "no key"}
+                      {dest?.state === "live"
+                        ? "live"
+                        : dest?.state === "error"
+                          ? "retrying"
+                          : dest?.keySet
+                            ? "key saved"
+                            : "no key"}
                     </span>
                   </label>
                   <div className="dest__key">
@@ -1030,7 +1839,9 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                       type="password"
                       autoComplete="off"
                       spellCheck={false}
-                      placeholder={dest?.keySet ? "Saved. Paste a new key to replace" : "Paste stream key"}
+                      placeholder={
+                        dest?.keySet ? "Saved. Paste a new key to replace" : "Paste stream key"
+                      }
                       value={keyDraft[p.id]}
                       disabled={live}
                       onChange={(e) => setKeyDraft({ ...keyDraft, [p.id]: e.target.value })}
@@ -1052,16 +1863,53 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               );
             })}
 
+            {!live && (
+              <div className="sx-ready" data-testid="ready-check">
+                <span className="eyebrow">READY CHECK</span>
+                <ul>
+                  {checks.map((c) => (
+                    <li key={c.id} className={c.ok ? "sx-ready__ok" : "sx-ready__todo"}>
+                      <span aria-hidden="true">{c.ok ? "✓" : "○"}</span>
+                      <strong>{c.label}</strong>
+                      <small>{c.note}</small>
+                    </li>
+                  ))}
+                </ul>
+                {!allReady && (
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    disabled={busy || testing || !status?.ready}
+                    onClick={() => void getReady()}
+                  >
+                    {busy || testing ? "Getting ready…" : "Get me ready"}
+                  </button>
+                )}
+              </div>
+            )}
             {!live ? (
-              <button type="button" className="button button--primary golive__cta" disabled={busy || targets.length === 0} onClick={() => void goLive()}>
+              <button
+                type="button"
+                className="button button--primary golive__cta"
+                disabled={busy || targets.length === 0}
+                onClick={() => void goLive()}
+              >
                 Go live{targets.length ? ` to ${targets.map((t) => t.label).join(" + ")}` : ""}
               </button>
             ) : (
-              <button type="button" className="button button--danger golive__cta" onClick={() => void endLive()}>
+              <button
+                type="button"
+                className="button button--danger golive__cta"
+                onClick={() => void endLive()}
+              >
                 End stream
               </button>
             )}
-            {!live && targets.length === 0 && <small className="deck__hint">Save a stream key and tick a destination to go live.</small>}
+            {!live && targets.length === 0 && (
+              <small className="deck__hint">
+                Save a stream key and tick a destination to go live.
+              </small>
+            )}
             <div className="deck__stats">
               <span>
                 <small>Out</small>

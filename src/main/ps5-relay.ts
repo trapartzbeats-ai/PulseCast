@@ -117,7 +117,10 @@ export class Ps5Relay {
       if (safeStorage.isEncryptionAvailable()) {
         for (const platform of ["twitch", "facebook"] as Ps5Platform[]) {
           if (raw[platform]) {
-            this.keys.set(platform, safeStorage.decryptString(Buffer.from(raw[platform], "base64")));
+            this.keys.set(
+              platform,
+              safeStorage.decryptString(Buffer.from(raw[platform], "base64")),
+            );
           }
         }
       }
@@ -156,7 +159,8 @@ export class Ps5Relay {
     if (!safeStorage.isEncryptionAvailable()) {
       throw new Error("Windows secure storage is unavailable; the key was not saved.");
     }
-    if (value) this.keys.set(platform, /^rtmps?:\/\//i.test(value) ? value : BASES[platform] + value);
+    if (value)
+      this.keys.set(platform, /^rtmps?:\/\//i.test(value) ? value : BASES[platform] + value);
     else this.keys.delete(platform);
     const out: Record<string, string> = {};
     for (const [name, url] of this.keys) {
@@ -237,7 +241,8 @@ export class Ps5Relay {
       if (this.relay === child) this.relay = null;
       this.starting = false;
       this.log(`psrelay exited code=${code}`);
-      const retry = this.autoReconnect && !this.userStopped && this.lastRequest !== null && this.retries < 30;
+      const retry =
+        this.autoReconnect && !this.userStopped && this.lastRequest !== null && this.retries < 30;
       if (!retry) this.endLive();
       this.status = {
         ...this.status,
@@ -344,11 +349,16 @@ export class Ps5Relay {
       const name = String(event.event ?? "");
       if (name === "stats") {
         this.status.videoKbps = Number(event.video_kbps ?? 0);
-        const dests = (event.dests as Array<{ state?: string; queued_kb?: number; dropped?: number }>) ?? [];
+        const dests =
+          (event.dests as Array<{ state?: string; queued_kb?: number; dropped?: number }>) ?? [];
         let dropped = 0;
         dests.forEach((d, i) => {
           const platform = this.liveOrder[i];
-          if (platform) this.destState.set(platform, d.state === "live" ? "live" : d.state === "error" ? "error" : "idle");
+          if (platform)
+            this.destState.set(
+              platform,
+              d.state === "live" ? "live" : d.state === "error" ? "error" : "idle",
+            );
           dropped += Number(d.dropped ?? 0);
         });
         this.status.droppedKb = dropped;

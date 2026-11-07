@@ -1,15 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import {
-  type AdapterStatus,
-  type CoreState,
-  type RecoverySummary,
-} from "../shared/contracts";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { type AdapterStatus, type CoreState, type RecoverySummary } from "../shared/contracts";
 import { getBridge, isElectronBridge } from "./bridge";
 import { GoLiveView } from "./golive/GoLiveView";
 import { StudioLive } from "./studio/StudioLive";
@@ -326,7 +316,12 @@ function ShowGate({
             </span>
           </div>
         </div>
-        <button type="button" className="launch__screen" onClick={onGoLive} aria-label="Open Go Live">
+        <button
+          type="button"
+          className="launch__screen"
+          onClick={onGoLive}
+          aria-label="Open Go Live"
+        >
           <span className="launch__screen-glow" />
           <span className="launch__screen-label">PS5 SCREEN</span>
           <span className="launch__screen-play">

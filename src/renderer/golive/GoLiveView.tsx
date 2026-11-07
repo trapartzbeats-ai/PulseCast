@@ -110,7 +110,9 @@ function usePs5Preview(canvas: React.RefObject<HTMLCanvasElement | null>, enable
       }
       if (decoder.decodeQueueSize > 8 && !isKey) return; // fell behind: wait for a keyframe
       try {
-        decoder.decode(new EncodedVideoChunk({ type: isKey ? "key" : "delta", timestamp: packet.ts, data }));
+        decoder.decode(
+          new EncodedVideoChunk({ type: isKey ? "key" : "delta", timestamp: packet.ts, data }),
+        );
       } catch (e) {
         needKey = true;
         setError(e instanceof Error ? e.message : "Decode failed.");
@@ -128,10 +130,22 @@ function usePs5Preview(canvas: React.RefObject<HTMLCanvasElement | null>, enable
 }
 
 const BUTTON_BITS: Array<[number, number]> = [
-  [0, 0], [1, 1], [2, 2], [3, 3], // cross, moon, box, pyramid
-  [14, 4], [15, 5], [12, 6], [13, 7], // d-pad left, right, up, down
-  [4, 8], [5, 9], [10, 10], [11, 11], // L1 R1 L3 R3
-  [9, 12], [8, 13], [17, 14], [16, 15], // options, share, touchpad, PS
+  [0, 0],
+  [1, 1],
+  [2, 2],
+  [3, 3], // cross, moon, box, pyramid
+  [14, 4],
+  [15, 5],
+  [12, 6],
+  [13, 7], // d-pad left, right, up, down
+  [4, 8],
+  [5, 9],
+  [10, 10],
+  [11, 11], // L1 R1 L3 R3
+  [9, 12],
+  [8, 13],
+  [17, 14],
+  [16, 15], // options, share, touchpad, PS
 ];
 
 /** Reads a gamepad on this PC (for example a DualSense over Bluetooth) and sends it to the PS5 session. */
@@ -143,7 +157,9 @@ function usePs5Pad(enabled: boolean) {
     let lastSent = 0;
     const dead = (v: number) => (Math.abs(v) < 0.08 ? 0 : v);
     const tick = () => {
-      const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => Boolean(p?.connected));
+      const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad =>
+        Boolean(p?.connected),
+      );
       const pad = pads.find((p) => p.mapping === "standard") ?? pads[0];
       setPadName((prev) => {
         const next = pad ? pad.id.replace(/\(.*\)/, "").trim() : "";
@@ -182,7 +198,14 @@ function usePs5Pad(enabled: boolean) {
 }
 
 const PRESETS = [
-  { id: "weak", label: "Weak internet", note: "720p · 30 fps · 2.5 Mbps", res: 720, fps: 30, kbps: 2500 },
+  {
+    id: "weak",
+    label: "Weak internet",
+    note: "720p · 30 fps · 2.5 Mbps",
+    res: 720,
+    fps: 30,
+    kbps: 2500,
+  },
   { id: "steady", label: "Steady", note: "720p · 30 fps · 4 Mbps", res: 720, fps: 30, kbps: 4000 },
   { id: "sharp", label: "Sharp", note: "1080p · 30 fps · 6 Mbps", res: 1080, fps: 30, kbps: 6000 },
 ] as const;
@@ -196,8 +219,14 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<Ps5Status | null>(null);
   const [preset, setPreset] = useState<(typeof PRESETS)[number]["id"]>("steady");
-  const [picked, setPicked] = useState<Record<Ps5Platform, boolean>>({ twitch: true, facebook: true });
-  const [keyDraft, setKeyDraft] = useState<Record<Ps5Platform, string>>({ twitch: "", facebook: "" });
+  const [picked, setPicked] = useState<Record<Ps5Platform, boolean>>({
+    twitch: true,
+    facebook: true,
+  });
+  const [keyDraft, setKeyDraft] = useState<Record<Ps5Platform, string>>({
+    twitch: "",
+    facebook: "",
+  });
   const [problem, setProblem] = useState("");
 
   useEffect(() => {
@@ -217,12 +246,18 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
     try {
       setStatus(await job());
     } catch (error) {
-      setProblem(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "") : "That did not work.");
+      setProblem(
+        error instanceof Error
+          ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "")
+          : "That did not work.",
+      );
     }
   }, []);
 
   const chosen = PRESETS.find((p) => p.id === preset) ?? PRESETS[1];
-  const targets = PLATFORMS.filter((p) => picked[p.id] && status?.destinations.find((d) => d.platform === p.id)?.keySet);
+  const targets = PLATFORMS.filter(
+    (p) => picked[p.id] && status?.destinations.find((d) => d.platform === p.id)?.keySet,
+  );
 
   return (
     <main className="golive" data-testid="golive">
@@ -239,7 +274,13 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
 
       <section className="golive__stage">
         <div className={`monitor ${flowing ? "monitor--on" : ""}`}>
-          <canvas ref={canvas} className="monitor__canvas" width={1280} height={720} data-testid="ps5-canvas" />
+          <canvas
+            ref={canvas}
+            className="monitor__canvas"
+            width={1280}
+            height={720}
+            data-testid="ps5-canvas"
+          />
           {!flowing && (
             <div className="monitor__idle">
               <strong>{running ? "Waiting for the PS5…" : "PS5 screen"}</strong>
@@ -253,7 +294,9 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
           <div className="monitor__hud">
             <span>{flowing ? `${status?.width}×${status?.height}` : "—"}</span>
             <span>{flowing ? `${preview.fps} fps shown` : ""}</span>
-            <span className="monitor__proof">{status?.proof === "real" ? "REAL · PS5 H.264 as sent" : "UNAVAILABLE"}</span>
+            <span className="monitor__proof">
+              {status?.proof === "real" ? "REAL · PS5 H.264 as sent" : "UNAVAILABLE"}
+            </span>
           </div>
         </div>
 
@@ -275,7 +318,8 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
               ))}
             </div>
             <small className="deck__hint">
-              Pick below your upload speed. The PS5 encodes once at this rate and that exact video goes upstream.
+              Pick below your upload speed. The PS5 encodes once at this rate and that exact video
+              goes upstream.
             </small>
           </div>
 
@@ -312,7 +356,13 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
                     />
                     <strong>{p.label}</strong>
                     <span className={`dest__state dest__state--${dest?.state ?? "idle"}`}>
-                      {dest?.state === "live" ? "live" : dest?.state === "error" ? "retrying" : dest?.keySet ? "key saved" : "no key"}
+                      {dest?.state === "live"
+                        ? "live"
+                        : dest?.state === "error"
+                          ? "retrying"
+                          : dest?.keySet
+                            ? "key saved"
+                            : "no key"}
                     </span>
                   </label>
                   <div className="dest__key">
@@ -320,7 +370,9 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
                       type="password"
                       autoComplete="off"
                       spellCheck={false}
-                      placeholder={dest?.keySet ? "Saved. Paste a new key to replace" : "Paste stream key"}
+                      placeholder={
+                        dest?.keySet ? "Saved. Paste a new key to replace" : "Paste stream key"
+                      }
                       value={keyDraft[p.id]}
                       disabled={live}
                       onChange={(e) => setKeyDraft({ ...keyDraft, [p.id]: e.target.value })}
@@ -341,7 +393,9 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
                 </div>
               );
             })}
-            <small className="deck__hint">Keys are encrypted by Windows for your account and never shown again.</small>
+            <small className="deck__hint">
+              Keys are encrypted by Windows for your account and never shown again.
+            </small>
           </div>
 
           <div className="deck__actions">
@@ -350,7 +404,11 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
                 type="button"
                 className="button button--primary golive__cta"
                 disabled={!status?.ready}
-                onClick={() => void run(() => bridge.ps5Start({ res: chosen.res, fps: chosen.fps, bitrateKbps: chosen.kbps }))}
+                onClick={() =>
+                  void run(() =>
+                    bridge.ps5Start({ res: chosen.res, fps: chosen.fps, bitrateKbps: chosen.kbps }),
+                  )
+                }
               >
                 Start PS5 preview
               </button>
@@ -364,17 +422,27 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
                 >
                   Go live{targets.length ? ` to ${targets.map((t) => t.label).join(" + ")}` : ""}
                 </button>
-                <button type="button" className="button button--ghost" onClick={() => void run(() => bridge.ps5Stop())}>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => void run(() => bridge.ps5Stop())}
+                >
                   Stop preview
                 </button>
               </>
             ) : (
-              <button type="button" className="button button--danger golive__cta" onClick={() => void run(() => bridge.ps5EndLive())}>
+              <button
+                type="button"
+                className="button button--danger golive__cta"
+                onClick={() => void run(() => bridge.ps5EndLive())}
+              >
                 End stream
               </button>
             )}
             {running && !live && targets.length === 0 && (
-              <small className="deck__hint">Save a stream key and tick a destination to enable Go live.</small>
+              <small className="deck__hint">
+                Save a stream key and tick a destination to enable Go live.
+              </small>
             )}
           </div>
 
@@ -394,7 +462,10 @@ export function GoLiveView({ onBack }: { onBack(): void }) {
           </div>
           {(problem || status?.lastError || preview.error || (status && !status.ready)) && (
             <p className="golive__problem" role="alert">
-              {problem || status?.lastError || preview.error || `Missing: ${status?.missing.join(", ")}`}
+              {problem ||
+                status?.lastError ||
+                preview.error ||
+                `Missing: ${status?.missing.join(", ")}`}
             </p>
           )}
         </aside>
