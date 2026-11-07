@@ -11,7 +11,9 @@ import type {
   MediaHostProgramTransform,
 } from "../shared/contracts";
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
+import { Ps5Relay } from "./ps5-relay";
 
+let ps5: Ps5Relay | null = null;
 let mainWindow: BrowserWindow | null = null;
 let runtime: CoreRuntime | null = null;
 let mediaIpc: ReturnType<typeof registerFfmpegMediaIpc> | null = null;
@@ -64,7 +66,37 @@ function physicalPreviewBounds(
   };
 }
 
+function registerPs5Ipc(): void {
+  ps5 = new Ps5Relay({
+    psDir: process.env.PULSECAST_PS_DIR
+      ? path.resolve(process.env.PULSECAST_PS_DIR)
+      : app.isPackaged
+        ? path.join(process.resourcesPath, "ps-source")
+        : path.join(app.getAppPath(), "services", "ps-source"),
+    dataDir: app.getPath("userData"),
+    publishVideo: (packet) => mainWindow?.webContents.send("pulsecast:ps5:video", packet),
+    publishAudio: (pcm) => mainWindow?.webContents.send("pulsecast:ps5:audio", pcm),
+    publishStatus: (status) => mainWindow?.webContents.send("pulsecast:ps5:status", status),
+  });
+  void ps5.init();
+  ipcMain.handle("pulsecast:ps5:status", () => ps5!.getStatus());
+  ipcMain.handle("pulsecast:ps5:start", (_event, request) => ps5!.start(request));
+  ipcMain.on("pulsecast:ps5:input", (_event, state) => ps5?.sendPad(state));
+  ipcMain.handle("pulsecast:ps5:stop", () => ps5!.stop());
+  ipcMain.handle("pulsecast:ps5:go-live", (_event, platforms, options) =>
+    ps5!.goLive(platforms, options),
+  );
+  ipcMain.on("pulsecast:ps5:out-video", (_event, packet) => ps5?.feedOutVideo(packet));
+  ipcMain.on("pulsecast:ps5:out-audio", (_event, pcm) => ps5?.feedOutAudio(pcm));
+  ipcMain.on("pulsecast:ps5:auto-reconnect", (_event, on) => ps5?.setAutoReconnect(Boolean(on)));
+  ipcMain.handle("pulsecast:ps5:end-live", () => ps5!.endLive());
+  ipcMain.handle("pulsecast:ps5:set-key", (_event, platform, key: string) =>
+    ps5!.setKey(platform, String(key)),
+  );
+}
+
 function registerIpc(): void {
+  registerPs5Ipc();
   ipcMain.handle("pulsecast:get-snapshot", () => requireRuntime().getSnapshot());
   ipcMain.handle("pulsecast:execute-command", (_event, command: CommandEnvelope) =>
     requireRuntime().execute(command),
@@ -147,6 +179,7 @@ async function createWindow(): Promise<void> {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false, // keep compositing and encoding while the window is hidden
     },
   });
 
@@ -198,6 +231,7 @@ app.whenReady().then(async () => {
 app.on("before-quit", (event) => {
   if (quitReady) return;
   event.preventDefault();
+  ps5?.dispose();
   void Promise.all([mediaHostClient?.stop(), mediaIpc?.dispose(), runtime?.close()])
     .catch(() => undefined)
     .finally(() => {

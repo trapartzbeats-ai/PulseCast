@@ -464,7 +464,75 @@ export interface RecoverySummary {
   skippedEntries: number;
 }
 
-export interface PulseCastBridge {
+export type Ps5Platform = "twitch" | "facebook";
+
+export interface Ps5Status {
+  /** psrelay.exe, tempo-rtmp.exe and ps5.cfg found next to the app. */
+  ready: boolean;
+  missing: string[];
+  running: boolean;
+  live: boolean;
+  /** Proof language: "real" only while real PS5 packets are flowing. */
+  proof: "real" | "unavailable";
+  width: number;
+  height: number;
+  fps: number;
+  videoKbps: number;
+  droppedKb: number;
+  destinations: Array<{ platform: Ps5Platform; keySet: boolean; state: "idle" | "live" | "error" }>;
+  lastEvent: string;
+  lastError: string;
+}
+
+export interface Ps5StartRequest {
+  res: 720 | 1080;
+  fps: 30 | 60;
+  bitrateKbps: number;
+}
+
+/** Buttons use the Remote Play bit layout: cross 0, moon 1, box 2, pyramid 3, left 4, right 5, up 6, down 7,
+ *  L1 8, R1 9, L3 10, R3 11, options 12, share 13, touchpad 14, ps 15. Sticks are -32768..32767, triggers 0..255. */
+export interface Ps5PadState {
+  buttons: number;
+  l2: number;
+  r2: number;
+  lx: number;
+  ly: number;
+  rx: number;
+  ry: number;
+}
+
+export interface Ps5LiveOptions {
+  /** passthrough = the PS5's own H.264 as sent; composited = Studio's scene, encoded once on this PC. */
+  mode: "passthrough" | "composited";
+  width?: number;
+  height?: number;
+  fps?: number;
+}
+
+export type Ps5VideoPacket = { key: boolean; lost: boolean; ts: number; data: Uint8Array };
+
+export interface Ps5Bridge {
+  ps5Status(): Promise<Ps5Status>;
+  ps5Start(request: Ps5StartRequest): Promise<Ps5Status>;
+  ps5Stop(): Promise<Ps5Status>;
+  ps5GoLive(platforms: Ps5Platform[], options?: Ps5LiveOptions): Promise<Ps5Status>;
+  /** Composited output (Studio): H.264 from the renderer's encoder and mixed PCM, fed to the RTMP sender. */
+  ps5OutVideo(packet: { key: boolean; ts: number; data: Uint8Array }): void;
+  ps5OutAudio(pcm: Uint8Array): void;
+  subscribePs5Audio(listener: (pcm: Uint8Array) => void): () => void;
+  ps5EndLive(): Promise<Ps5Status>;
+  /** Stored with Electron safeStorage (Windows DPAPI). The key is never returned. */
+  ps5SetKey(platform: Ps5Platform, key: string): Promise<Ps5Status>;
+  /** When off, a dropped PS5 session ends the run instead of reconnecting (default on). Takes effect immediately. */
+  ps5SetAutoReconnect(on: boolean): void;
+  /** Controller state read from a gamepad on this PC, sent to the PS5 over Remote Play. */
+  ps5Input(state: Ps5PadState): void;
+  subscribePs5Video(listener: (packet: Ps5VideoPacket) => void): () => void;
+  subscribePs5Status(listener: (status: Ps5Status) => void): () => void;
+}
+
+export interface PulseCastBridge extends Ps5Bridge {
   getSnapshot(): Promise<CoreState>;
   executeCommand(command: CommandEnvelope): Promise<CommandResult>;
   resetShow(): Promise<CoreState>;

@@ -19,3 +19,10 @@ __restructure.js
 .env
 .env.*
 !.env.example
+
+# PS5 relay: third-party source, built binaries and the private pairing file
+services/ps-source/chiaki-ng/
+services/ps-source/bin/
+services/ps-source/ps5.cfg
+services/ps-source/*.cfg
+.claude/

@@ -3721,3 +3721,656 @@ button:disabled {
   text-decoration: underline;
   padding: 0;
 }
+
+/* ---------- Launch redesign + Go Live (PS5) ---------- */
+.launch {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  padding: 36px 0 28px;
+}
+.launch__copy h1 {
+  font-size: clamp(54px, 7vw, 104px);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  margin: 14px 0 20px;
+  text-transform: uppercase;
+}
+.launch__copy h1 em {
+  font-style: normal;
+  color: var(--signal);
+}
+.launch__copy p {
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
+.launch__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 26px;
+}
+.launch__cta {
+  padding: 16px 26px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.launch__note {
+  color: var(--subtle);
+  font-size: 12.5px;
+  max-width: 34ch;
+  line-height: 1.45;
+}
+.launch__note b {
+  color: var(--signal);
+  font-weight: 600;
+}
+.launch__screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  border: 1px solid var(--line-bright);
+  background:
+    linear-gradient(135deg, rgba(216, 255, 62, 0.07), transparent 40%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px),
+    var(--surface-1);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 6px var(--surface-0);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+.launch__screen:hover {
+  transform: translateY(-3px);
+  border-color: var(--signal-dim);
+}
+.launch__screen-glow {
+  position: absolute;
+  inset: auto -10% -45% -10%;
+  height: 80%;
+  background: radial-gradient(closest-side, rgba(216, 255, 62, 0.28), transparent);
+}
+.launch__screen-label,
+.launch__screen-foot {
+  position: absolute;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+.launch__screen-label {
+  top: 16px;
+  left: 18px;
+}
+.launch__screen-foot {
+  bottom: 16px;
+  right: 18px;
+}
+.launch__screen-play {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--signal);
+  color: #0b0e12;
+  position: relative;
+  box-shadow: 0 0 0 10px rgba(216, 255, 62, 0.12);
+}
+@media (max-width: 1100px) {
+  .launch {
+    grid-template-columns: 1fr;
+  }
+}
+
+.golive {
+  min-height: calc(100vh - 44px);
+  padding: 18px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.golive__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.golive__back {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.golive__back:hover {
+  color: var(--text);
+}
+.golive__tag {
+  flex: 1;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--subtle);
+}
+.golive__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-bright);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.golive__badge i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--subtle);
+}
+.golive__badge.is-on {
+  color: var(--signal);
+  border-color: var(--signal-dim);
+}
+.golive__badge.is-on i {
+  background: var(--signal);
+}
+.golive__badge.is-live {
+  color: #fff;
+  background: var(--red);
+  border-color: var(--red);
+}
+.golive__badge.is-live i {
+  background: #fff;
+  animation: golive-blink 1s infinite;
+}
+@keyframes golive-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+.golive__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: start;
+}
+.monitor {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--line-bright);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.monitor--on {
+  border-color: var(--signal-dim);
+}
+.monitor__canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.monitor__idle {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 6px;
+  color: var(--muted);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px), var(--surface-0);
+}
+.monitor__idle strong {
+  color: var(--text);
+  font-size: 20px;
+}
+.monitor__hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 14px;
+  padding: 8px 14px;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+.monitor__proof {
+  margin-left: auto;
+  color: var(--signal);
+}
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+.deck__block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.deck__presets {
+  display: grid;
+  gap: 6px;
+}
+.chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.chip small {
+  color: var(--subtle);
+}
+.chip--on {
+  border-color: var(--signal);
+  background: rgba(216, 255, 62, 0.08);
+}
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.deck__hint {
+  color: var(--subtle);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dest {
+  display: grid;
+  gap: 6px;
+}
+.dest__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dest__state {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--subtle);
+}
+.dest__state--live {
+  color: var(--green);
+}
+.dest__state--error {
+  color: var(--amber);
+}
+.dest__key {
+  display: flex;
+  gap: 6px;
+}
+.dest__key input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-0);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+.deck__actions {
+  display: grid;
+  gap: 8px;
+}
+.golive__cta {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.deck__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.deck__stats small {
+  display: block;
+  color: var(--subtle);
+  font-size: 11px;
+}
+.deck__stats strong {
+  font-family: Consolas, monospace;
+  font-size: 14px;
+}
+.golive__problem {
+  margin: 0;
+  color: var(--amber);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+@media (max-width: 1100px) {
+  .golive__stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Studio (live) ---------- */
+.sx {
+  min-height: calc(100vh - 44px);
+  padding: 14px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sx-hidden-video {
+  position: fixed;
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+.sx-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sx-output-note {
+  color: var(--subtle);
+  font-size: 12px;
+}
+.sx-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  gap: 16px;
+  align-items: start;
+}
+.sx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sx-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sx-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sx-hint {
+  color: var(--subtle);
+  font-size: 11px;
+}
+.sx-scenes,
+.sx-layers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.sx-scenes button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.sx-scenes button.is-active {
+  border-color: var(--signal);
+  background: rgba(216, 255, 62, 0.09);
+}
+.sx-scenes kbd {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--subtle);
+  min-width: 10px;
+}
+.sx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.sx-input {
+  width: 100%;
+  background: var(--surface-0);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  box-sizing: border-box;
+}
+.sx-layers li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.sx-layers li.is-selected {
+  border-color: var(--cyan);
+}
+.sx-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: grid;
+}
+.sx-name small {
+  color: var(--subtle);
+  font-size: 11px;
+}
+.sx-eye,
+.sx-mini {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 8px;
+  font: inherit;
+}
+.sx-eye {
+  color: var(--signal);
+}
+.sx-empty {
+  color: var(--subtle);
+  font-size: 12.5px;
+  margin: 0;
+}
+.sx-adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sx-file {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.sx-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.sx-center {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.sx-stage {
+  position: relative;
+  line-height: 0;
+  border: 1px solid var(--line-bright);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.sx-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.sx-box {
+  position: absolute;
+  border: 2px solid var(--cyan);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.sx-box__label {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  background: var(--cyan);
+  color: #04100f;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+}
+.sx-box__handle {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: var(--cyan);
+  border-radius: 3px;
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+.sx-note {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  line-height: 1.3;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--amber);
+  padding: 6px 10px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.sx-statusline {
+  display: flex;
+  justify-content: space-between;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.sx-mixer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.sx-strip {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.sx-strip header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+}
+.sx-strip header label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.sx-strip select,
+.sx-props select {
+  background: var(--surface-0);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+  max-width: 150px;
+}
+.sx-meter {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.sx-meter i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--signal) 75%, var(--red));
+  transition: width 0.08s linear;
+}
+.sx-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.sx-props {
+  display: grid;
+  gap: 10px;
+}
+.sx-props label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sx-live .deck__presets {
+  display: grid;
+}
+@media (max-width: 1200px) {
+  .sx-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sx input[type="range"],
+.sx input[type="checkbox"] {
+  accent-color: var(--signal);
+}

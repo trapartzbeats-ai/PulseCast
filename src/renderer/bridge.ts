@@ -200,6 +200,62 @@ const browserBridge: PulseCastBridge = {
   subscribeRealMedia() {
     return () => undefined;
   },
+  async ps5Status() {
+    return {
+      ready: false,
+      missing: ["PS5 relay needs the Electron app"],
+      running: false,
+      live: false,
+      proof: "unavailable" as const,
+      width: 0,
+      height: 0,
+      fps: 0,
+      videoKbps: 0,
+      droppedKb: 0,
+      destinations: [
+        { platform: "twitch" as const, keySet: false, state: "idle" as const },
+        { platform: "facebook" as const, keySet: false, state: "idle" as const },
+      ],
+      lastEvent: "",
+      lastError: "",
+    };
+  },
+  async ps5Start() {
+    return this.ps5Status();
+  },
+  async ps5Stop() {
+    return this.ps5Status();
+  },
+  async ps5GoLive() {
+    return this.ps5Status();
+  },
+  async ps5EndLive() {
+    return this.ps5Status();
+  },
+  ps5SetAutoReconnect() {
+    // no PS5 in a plain browser
+  },
+  async ps5SetKey() {
+    return this.ps5Status();
+  },
+  ps5OutVideo() {
+    // no encoder output in a plain browser
+  },
+  ps5OutAudio() {
+    // no encoder output in a plain browser
+  },
+  subscribePs5Audio() {
+    return () => undefined;
+  },
+  ps5Input() {
+    // no PS5 in a plain browser
+  },
+  subscribePs5Video() {
+    return () => undefined;
+  },
+  subscribePs5Status() {
+    return () => undefined;
+  },
   async openMediaArtifact() {
     return {
       opened: false,
