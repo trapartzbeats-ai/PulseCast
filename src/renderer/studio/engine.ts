@@ -318,6 +318,8 @@ export class Compositor {
   private images = new Map<string, HTMLImageElement>();
   camera: HTMLVideoElement | null = null;
   scene: Scene | null = null;
+  /** Burn this PC's clock into the picture so the delay on a platform can be read off. */
+  clock = false;
 
   constructor(
     private feed: Ps5Feed,
@@ -471,6 +473,19 @@ export class Compositor {
       }
     }
     ctx.globalAlpha = 1;
+    if (this.clock) {
+      const size = Math.round(H / 14);
+      const stamp = new Date().toLocaleTimeString([], { hour12: false });
+      ctx.font = `700 ${size}px "Consolas", monospace`;
+      ctx.textBaseline = "bottom";
+      ctx.textAlign = "left";
+      const pad = size * 0.3;
+      const width = ctx.measureText(stamp).width;
+      ctx.fillStyle = "rgba(0,0,0,0.75)";
+      ctx.fillRect(pad, H - size - pad * 2.5, width + pad * 2, size + pad * 1.5);
+      ctx.fillStyle = "#d8ff3e";
+      ctx.fillText(stamp, pad * 2, H - pad * 1.75);
+    }
   }
 }
 

@@ -81,6 +81,7 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const [padOn, setPadOn] = useState(save.prefs?.padOn ?? true);
   const [adaptive, setAdaptive] = useState(save.prefs?.adaptive ?? true);
   const [uploadKbps, setUploadKbps] = useState(save.prefs?.uploadKbps ?? 0);
+  const [clockOn, setClockOn] = useState(false);
   const [testing, setTesting] = useState(false);
   const [netNote, setNetNote] = useState("");
   const [liveRate, setLiveRate] = useState(0);
@@ -994,6 +995,21 @@ export function StudioLive({ onBack }: { onBack(): void }) {
               <small className="deck__hint">
                 On: if the connection cannot carry the stream, the rate steps down by a fifth and creeps back up when it is calm.
                 Limit: {(rateCap / 1000).toFixed(1)} Mbps.
+              </small>
+              <label className="dest__row">
+                <input
+                  type="checkbox"
+                  checked={clockOn}
+                  onChange={(e) => {
+                    setClockOn(e.target.checked);
+                    if (engines.current) engines.current.comp.clock = e.target.checked;
+                  }}
+                />
+                <strong>Show a clock on the stream</strong>
+                <span className="dest__state">{clockOn ? "on" : "off"}</span>
+              </label>
+              <small className="deck__hint">
+                Test only: puts this PC&apos;s time in the corner. Compare it with the time on your Facebook viewer to read the delay. Turn it off before a real show.
               </small>
             </div>
 
