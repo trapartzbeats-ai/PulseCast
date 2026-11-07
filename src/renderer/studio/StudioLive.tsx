@@ -6,12 +6,17 @@ import {
   Mixer,
   Ps5Feed,
   ProgramEncoder,
+  defaultCameraLook,
+  deleteSong,
+  getSong,
   listDevices,
   loadStudio,
   makeLayer,
+  putSong,
   readPad,
   saveStudio,
   uid,
+  type CameraLook,
   type Layer,
   type LayerKind,
   type MediaChoice,
@@ -56,18 +61,29 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const [save, setSave] = useState<StudioSave>(() => loadStudio());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<Ps5Status | null>(null);
-  const [preset, setPreset] = useState<(typeof PRESETS)[number]["id"]>("steady");
-  const [picked, setPicked] = useState<Record<Ps5Platform, boolean>>({ twitch: true, facebook: true });
+  const [preset, setPreset] = useState<(typeof PRESETS)[number]["id"]>(
+    PRESETS.find((p) => p.id === save.prefs?.preset)?.id ?? "steady",
+  );
+  const [picked, setPicked] = useState<Record<Ps5Platform, boolean>>({
+    twitch: save.prefs?.picked?.twitch ?? true,
+    facebook: save.prefs?.picked?.facebook ?? true,
+  });
   const [keyDraft, setKeyDraft] = useState<Record<Ps5Platform, string>>({ twitch: "", facebook: "" });
   const [problem, setProblem] = useState("");
   const [devices, setDevices] = useState<{ cameras: MediaChoice[]; mics: MediaChoice[] }>({ cameras: [], mics: [] });
-  const [camId, setCamId] = useState("");
-  const [micId, setMicId] = useState("");
-  const [camOn, setCamOn] = useState(false);
-  const [ps5Vol, setPs5Vol] = useState(1);
-  const [micVol, setMicVol] = useState(1);
-  const [monitor, setMonitor] = useState(false);
-  const [padOn, setPadOn] = useState(true);
+  const [camId, setCamId] = useState(save.prefs?.camId ?? "");
+  const [micId, setMicId] = useState(save.prefs?.micId ?? "");
+  const [camOn, setCamOn] = useState(save.prefs?.camOn ?? false);
+  const [camRes, setCamRes] = useState<"720" | "1080">(save.prefs?.camRes ?? "720");
+  const [ps5Vol, setPs5Vol] = useState(save.prefs?.ps5Vol ?? 1);
+  const [micVol, setMicVol] = useState(save.prefs?.micVol ?? 1);
+  const [monitor, setMonitor] = useState(save.prefs?.monitor ?? false);
+  const [padOn, setPadOn] = useState(save.prefs?.padOn ?? true);
+  const [adaptive, setAdaptive] = useState(save.prefs?.adaptive ?? true);
+  const [uploadKbps, setUploadKbps] = useState(save.prefs?.uploadKbps ?? 0);
+  const [testing, setTesting] = useState(false);
+  const [netNote, setNetNote] = useState("");
+  const [liveRate, setLiveRate] = useState(0);
   const [padName, setPadName] = useState("");
   const [autoRe, setAutoRe] = useState(() => {
     try {
@@ -84,7 +100,7 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       /* per-viewer convenience only */
     }
   }, [autoRe, bridge]);
-  const [meters, setMeters] = useState({ ps5: -90, mic: -90, fps: 0, ps5Live: false, kbps: 0 });
+  const [meters, setMeters] = useState({ ps5: -90, mic: -90, song: -90, fps: 0, ps5Live: false, kbps: 0 });
   const [busy, setBusy] = useState(false);
 
   const mounted = useRef(false);
@@ -161,7 +177,14 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   };
 
   /* ---- persistence ---- */
-  useEffect(() => saveStudio(save), [save]);
+  useEffect(
+    () =>
+      saveStudio({
+        ...save,
+        prefs: { camId, micId, camOn, camRes, ps5Vol, micVol, monitor, padOn, preset, picked, adaptive, uploadKbps },
+      }),
+    [save, camId, micId, camOn, camRes, ps5Vol, micVol, monitor, padOn, preset, picked, adaptive, uploadKbps],
+  );
 
   /* ---- mount: engines, status, devices ---- */
   useEffect(() => {
@@ -215,10 +238,10 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       lastFrames = feed.frames;
       const kbps = Math.round(((enc.sentBytes - lastBytes) * 8) / 1000);
       lastBytes = enc.sentBytes;
-      setMeters({ ps5: mixer.ps5Db(), mic: mixer.micDb(), fps, ps5Live: feed.live, kbps });
+      setMeters({ ps5: mixer.ps5Db(), mic: mixer.micDb(), song: mixer.songDb(), fps, ps5Live: feed.live, kbps });
     }, 1000);
     const fast = window.setInterval(
-      () => setMeters((m) => ({ ...m, ps5: mixer.ps5Db(), mic: mixer.micDb() })),
+      () => setMeters((m) => ({ ...m, ps5: mixer.ps5Db(), mic: mixer.micDb(), song: mixer.songDb() })),
       120,
     );
     return () => {
@@ -253,7 +276,12 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     }
     void navigator.mediaDevices
       .getUserMedia({
-        video: { deviceId: camId ? { exact: camId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        video: {
+          deviceId: camId ? { exact: camId } : undefined,
+          width: { ideal: camRes === "1080" ? 1920 : 1280 },
+          height: { ideal: camRes === "1080" ? 1080 : 720 },
+          frameRate: { ideal: 30 },
+        },
       })
       .then((stream) => {
         if (cancelled) {
@@ -277,7 +305,7 @@ export function StudioLive({ onBack }: { onBack(): void }) {
     return () => {
       cancelled = true;
     };
-  }, [camOn, camId, comp]);
+  }, [camOn, camId, camRes, comp]);
 
   /* ---- controller from this PC ---- */
   useEffect(() => {
@@ -304,6 +332,112 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       bridge.ps5Input({ buttons: 0, l2: 0, r2: 0, lx: 0, ly: 0, rx: 0, ry: 0 });
     };
   }, [ps5Running, padOn]);
+
+  /* ---- per-scene audio: mutes and a song that plays while the scene is on ---- */
+  const sceneAudio = scene.audio;
+  const songMeta = sceneAudio?.song ?? null;
+  useEffect(() => {
+    mixer.setMutes(Boolean(sceneAudio?.ps5Muted), Boolean(sceneAudio?.micMuted));
+  }, [mixer, sceneAudio?.ps5Muted, sceneAudio?.micMuted]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!songMeta) {
+      mixer.stopSong();
+      return;
+    }
+    void (async () => {
+      try {
+        const blob = await getSong(songMeta.id);
+        if (cancelled) return;
+        if (!blob) {
+          setProblem(`The song for "${scene.name}" is missing from this PC's storage. Choose it again.`);
+          return;
+        }
+        await mixer.resume();
+        await mixer.playSong(songMeta.id, blob, songMeta.volume, songMeta.loop);
+      } catch (error) {
+        setProblem(`Song: ${error instanceof Error ? error.message : "could not play"}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // only the song identity, loop and scene decide a restart; volume is applied live below
+  }, [mixer, scene.id, songMeta?.id, songMeta?.loop]);
+  useEffect(() => {
+    if (songMeta) mixer.setSongVolume(songMeta.volume);
+  }, [mixer, songMeta, songMeta?.volume]);
+
+  const updateAudio = (patch: Partial<NonNullable<Scene["audio"]>>) =>
+    updateScene((sc) => ({ ...sc, audio: { ...sc.audio, ...patch } }));
+  const pickSong = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 60 * 1024 * 1024) {
+      setProblem("That song is over 60 MB. Use a smaller file.");
+      return;
+    }
+    try {
+      const id = uid();
+      await putSong(id, file);
+      const old = sceneAudio?.song;
+      updateAudio({ song: { id, name: file.name.replace(/\.[^.]+$/, ""), volume: old?.volume ?? 0.6, loop: true } });
+      if (old) void deleteSong(old.id);
+    } catch {
+      setProblem("Could not keep that song on this PC (browser storage refused it).");
+    }
+  };
+  const removeSong = () => {
+    const old = sceneAudio?.song;
+    updateAudio({ song: null });
+    if (old) void deleteSong(old.id);
+  };
+
+  /* ---- upload speed test, and a live bitrate guard ---- */
+  const recommended = uploadKbps
+    ? [...PRESETS].reverse().find((p) => p.kbps <= uploadKbps * 0.7) ?? PRESETS[0]
+    : null;
+  const rateCap = uploadKbps ? Math.max(1200, Math.min(preview.kbps, Math.floor(uploadKbps * 0.7))) : preview.kbps;
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const testUpload = async () => {
+    setTesting(true);
+    setNetNote("");
+    try {
+      const r = await bridge.netUploadTest();
+      setUploadKbps(r.kbps);
+      setNetNote(`Measured ${(r.kbps / 1000).toFixed(1)} Mbps up in ${r.seconds}s.`);
+    } catch (error) {
+      setNetNote(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "") : "Test failed.");
+    } finally {
+      setTesting(false);
+    }
+  };
+  useEffect(() => {
+    if (!live) {
+      setLiveRate(0);
+      return;
+    }
+    let rate = rateCap;
+    let lastDropped = statusRef.current?.droppedKb ?? 0;
+    let calm = 0;
+    setLiveRate(rate);
+    if (!adaptive) return;
+    const timer = window.setInterval(() => {
+      const dropped = statusRef.current?.droppedKb ?? 0;
+      if (dropped > lastDropped) {
+        // the connection could not carry the stream: step down and ask for a fresh keyframe
+        rate = Math.max(1200, Math.round(rate * 0.8));
+        calm = 0;
+        if (enc.setBitrate(rate, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rate })) setLiveRate(rate);
+      } else if (++calm >= 6 && rate < rateCap) {
+        rate = Math.min(rateCap, Math.round(rate * 1.1));
+        calm = 0;
+        if (enc.setBitrate(rate, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rate })) setLiveRate(rate);
+      }
+      lastDropped = dropped;
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [live, adaptive, rateCap, enc, preview.w, preview.h, preview.fps]);
 
   /* ---- hotkeys: 1-9 switch scene ---- */
   useEffect(() => {
@@ -379,7 +513,7 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         carry = joined.slice(offset);
       };
       try {
-        await enc.start(comp.canvas, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: preview.kbps });
+        await enc.start(comp.canvas, { width: preview.w, height: preview.h, fps: preview.fps, bitrateKbps: rateCap });
       } catch (error) {
         mixer.onPcm = null;
         await bridge.ps5EndLive();
@@ -501,6 +635,54 @@ export function StudioLive({ onBack }: { onBack(): void }) {
 
           <section className="sx-panel">
             <header>
+              <span className="eyebrow">SOUND IN “{scene.name.toUpperCase()}”</span>
+              <span className="sx-hint">saved with the scene</span>
+            </header>
+            <label className="sx-toggle">
+              <input type="checkbox" checked={Boolean(sceneAudio?.micMuted)} onChange={(e) => updateAudio({ micMuted: e.target.checked })} /> Mute my microphone
+            </label>
+            <label className="sx-toggle">
+              <input type="checkbox" checked={Boolean(sceneAudio?.ps5Muted)} onChange={(e) => updateAudio({ ps5Muted: e.target.checked })} /> Mute the PS5 game sound
+            </label>
+            <div className="sx-song">
+              {songMeta ? (
+                <>
+                  <div className="sx-row">
+                    <strong className="sx-song__name">♪ {songMeta.name}</strong>
+                    <button type="button" className="button button--ghost" onClick={removeSong}>
+                      Remove
+                    </button>
+                  </div>
+                  <div className="sx-meter">
+                    <i style={{ width: `${dbToPercent(meters.song)}%` }} />
+                  </div>
+                  <label>
+                    Song volume
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={songMeta.volume}
+                      onChange={(e) => updateAudio({ song: { ...songMeta, volume: Number(e.target.value) } })}
+                    />
+                  </label>
+                  <label className="sx-toggle">
+                    <input type="checkbox" checked={songMeta.loop} onChange={(e) => updateAudio({ song: { ...songMeta, loop: e.target.checked } })} /> Repeat
+                  </label>
+                  <small className="deck__hint">Plays when this scene is on air and fades out when you leave it. Tick “hear on this PC” to listen.</small>
+                </>
+              ) : (
+                <label className="button button--ghost sx-file">
+                  + Song for this scene
+                  <input type="file" accept="audio/*" onChange={(e) => void pickSong(e.target.files?.[0])} />
+                </label>
+              )}
+            </div>
+          </section>
+
+          <section className="sx-panel">
+            <header>
               <span className="eyebrow">SOURCES IN “{scene.name.toUpperCase()}”</span>
             </header>
             <ul className="sx-layers">
@@ -607,9 +789,15 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                   ))}
                 </select>
               </header>
-              <label className="sx-toggle">
-                <input type="checkbox" checked={camOn} onChange={(e) => setCamOn(e.target.checked)} /> Camera on
-              </label>
+              <div className="sx-row">
+                <label className="sx-toggle">
+                  <input type="checkbox" checked={camOn} onChange={(e) => setCamOn(e.target.checked)} /> Camera on
+                </label>
+                <select value={camRes} aria-label="Camera resolution" onChange={(e) => setCamRes(e.target.value as "720" | "1080")}>
+                  <option value="720">720p</option>
+                  <option value="1080">1080p</option>
+                </select>
+              </div>
               <small className="deck__hint">Add a Camera source to a scene to show it.</small>
             </div>
           </section>
@@ -685,11 +873,49 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                     </select>
                   </label>
                 )}
-                {selected.kind === "camera" && (
-                  <label className="sx-toggle">
-                    <input type="checkbox" checked={Boolean(selected.mirror)} onChange={(e) => updateLayer(selected.id, { mirror: e.target.checked })} /> Mirror
-                  </label>
-                )}
+                {selected.kind === "camera" && (() => {
+                  const look: CameraLook = { ...defaultCameraLook(), ...selected.cam };
+                  const setLook = (patch: Partial<CameraLook>) => updateLayer(selected.id, { cam: { ...look, ...patch } });
+                  const range = (label: string, key: "zoom" | "shiftX" | "shiftY" | "brightness" | "contrast" | "saturation", min: number, max: number, step: number) => (
+                    <label>
+                      {label}
+                      <input type="range" min={min} max={max} step={step} value={look[key]} onChange={(e) => setLook({ [key]: Number(e.target.value) })} />
+                    </label>
+                  );
+                  return (
+                    <>
+                      <div className="sx-row">
+                        <label className="sx-toggle">
+                          <input type="checkbox" checked={Boolean(selected.mirror)} onChange={(e) => updateLayer(selected.id, { mirror: e.target.checked })} /> Mirror
+                        </label>
+                        <select value={look.shape} aria-label="Camera shape" onChange={(e) => setLook({ shape: e.target.value as CameraLook["shape"] })}>
+                          <option value="rect">Rectangle</option>
+                          <option value="rounded">Rounded</option>
+                          <option value="circle">Circle</option>
+                        </select>
+                      </div>
+                      {range("Zoom in", "zoom", 1, 3, 0.01)}
+                      {look.zoom > 1 && range("Move left / right", "shiftX", -1, 1, 0.01)}
+                      {look.zoom > 1 && range("Move up / down", "shiftY", -1, 1, 0.01)}
+                      {range("Brightness", "brightness", 0.5, 1.5, 0.01)}
+                      {range("Contrast", "contrast", 0.5, 1.5, 0.01)}
+                      {range("Colour", "saturation", 0, 2, 0.01)}
+                      <div className="sx-row">
+                        <label>
+                          Outline
+                          <input type="range" min={0} max={16} step={1} value={look.borderWidth} onChange={(e) => setLook({ borderWidth: Number(e.target.value) })} />
+                        </label>
+                        <label>
+                          Outline colour
+                          <input type="color" value={look.borderColor} onChange={(e) => setLook({ borderColor: e.target.value })} />
+                        </label>
+                      </div>
+                      <button type="button" className="button button--ghost" onClick={() => updateLayer(selected.id, { cam: defaultCameraLook() })}>
+                        Reset camera look
+                      </button>
+                    </>
+                  );
+                })()}
                 <label>
                   Opacity
                   <input type="range" min={0} max={1} step={0.01} value={selected.opacity} onChange={(e) => updateLayer(selected.id, { opacity: Number(e.target.value) })} />
@@ -736,6 +962,39 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                   <small>{p.note}</small>
                 </button>
               ))}
+            </div>
+
+            <span className="eyebrow">CONNECTION</span>
+            <div className="sx-net">
+              <div className="sx-row">
+                <button type="button" className="button button--ghost" disabled={testing || live} onClick={() => void testUpload()}>
+                  {testing ? "Testing…" : "Test my upload"}
+                </button>
+                <span className="dest__state">{uploadKbps ? `${(uploadKbps / 1000).toFixed(1)} Mbps up` : "not tested"}</span>
+              </div>
+              {netNote && <small className="deck__hint">{netNote}</small>}
+              {recommended && (
+                <small className="deck__hint">
+                  Safe stream rate: {(Math.max(1200, Math.floor(uploadKbps * 0.7)) / 1000).toFixed(1)} Mbps (70% of your upload, so the rest is left for everything else).
+                  {recommended.id !== preset && !live && !ps5Running && (
+                    <>
+                      {" "}
+                      <button type="button" className="sx-link" onClick={() => setPreset(recommended.id)}>
+                        Use “{recommended.label}”
+                      </button>
+                    </>
+                  )}
+                </small>
+              )}
+              <label className="dest__row">
+                <input type="checkbox" checked={adaptive} onChange={(e) => setAdaptive(e.target.checked)} />
+                <strong>Keep the stream alive</strong>
+                <span className="dest__state">{live ? `${(liveRate / 1000).toFixed(1)} Mbps now` : adaptive ? "on" : "off"}</span>
+              </label>
+              <small className="deck__hint">
+                On: if the connection cannot carry the stream, the rate steps down by a fifth and creeps back up when it is calm.
+                Limit: {(rateCap / 1000).toFixed(1)} Mbps.
+              </small>
             </div>
 
             <span className="eyebrow">DESTINATIONS</span>

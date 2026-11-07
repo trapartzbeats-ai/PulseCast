@@ -232,6 +232,9 @@ const browserBridge: PulseCastBridge = {
   async ps5EndLive() {
     return this.ps5Status();
   },
+  async netUploadTest() {
+    throw new Error("Open the Electron app to test upload speed.");
+  },
   ps5SetAutoReconnect() {
     // no PS5 in a plain browser
   },

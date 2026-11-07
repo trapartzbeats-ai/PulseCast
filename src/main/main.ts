@@ -11,6 +11,7 @@ import type {
   MediaHostProgramTransform,
 } from "../shared/contracts";
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
+import { uploadTest } from "./net-test";
 import { Ps5Relay } from "./ps5-relay";
 
 let ps5: Ps5Relay | null = null;
@@ -88,6 +89,7 @@ function registerPs5Ipc(): void {
   );
   ipcMain.on("pulsecast:ps5:out-video", (_event, packet) => ps5?.feedOutVideo(packet));
   ipcMain.on("pulsecast:ps5:out-audio", (_event, pcm) => ps5?.feedOutAudio(pcm));
+  ipcMain.handle("pulsecast:net:upload-test", () => uploadTest());
   ipcMain.on("pulsecast:ps5:auto-reconnect", (_event, on) => ps5?.setAutoReconnect(Boolean(on)));
   ipcMain.handle("pulsecast:ps5:end-live", () => ps5!.endLive());
   ipcMain.handle("pulsecast:ps5:set-key", (_event, platform, key: string) =>

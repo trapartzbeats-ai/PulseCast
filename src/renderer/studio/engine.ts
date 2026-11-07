@@ -20,15 +20,44 @@ export interface Layer {
   visible: boolean;
   fit: "cover" | "contain" | "stretch";
   mirror?: boolean;
+  /** Camera look: window shape, zoom into the picture, nudge it, colour, and an outline. */
+  cam?: CameraLook;
   text?: { value: string; size: number; color: string; bold: boolean; outline: boolean; align: "left" | "center" | "right" };
   /** data: URL for image layers */
   image?: string;
+}
+
+export interface CameraLook {
+  shape: "rect" | "rounded" | "circle";
+  /** 1 = whole picture, up to 3 = zoomed in */
+  zoom: number;
+  /** -1..1 shift of the zoomed window */
+  shiftX: number;
+  shiftY: number;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  borderWidth: number;
+  borderColor: string;
+}
+
+export function defaultCameraLook(): CameraLook {
+  return { shape: "rect", zoom: 1, shiftX: 0, shiftY: 0, brightness: 1, contrast: 1, saturation: 1, borderWidth: 0, borderColor: "#d8ff3e" };
+}
+
+/** Audio that belongs to one scene. Anything left out follows the main mixer. */
+export interface SceneAudio {
+  micMuted?: boolean;
+  ps5Muted?: boolean;
+  /** A song kept in this PC's browser storage (see putSong). */
+  song?: { id: string; name: string; volume: number; loop: boolean } | null;
 }
 
 export interface Scene {
   id: string;
   name: string;
   layers: Layer[];
+  audio?: SceneAudio;
 }
 
 export function uid(): string {
@@ -48,7 +77,7 @@ export function makeLayer(kind: LayerKind, extra: Partial<Layer> = {}): Layer {
     visible: true,
     fit: kind === "ps5" ? "contain" : "cover",
   };
-  if (kind === "camera") Object.assign(base, { x: 0.74, y: 0.62, w: 0.24, h: 0.34, mirror: true });
+  if (kind === "camera") Object.assign(base, { x: 0.74, y: 0.62, w: 0.24, h: 0.34, mirror: true, cam: defaultCameraLook() });
   if (kind === "text") {
     Object.assign(base, {
       x: 0.05,
@@ -92,6 +121,7 @@ export function defaultScenes(): Scene[] {
     {
       id: uid(),
       name: "Be right back",
+      audio: { micMuted: true },
       layers: [
         makeLayer("text", {
           name: "Title",
@@ -337,6 +367,62 @@ export class Compositor {
     return { sx: (source.w - sw) / 2, sy: (source.h - sh) / 2, sw, sh, dx: box.x, dy: box.y, dw: box.w, dh: box.h };
   }
 
+  private drawCamera(v: HTMLVideoElement, layer: Layer, box: { x: number; y: number; w: number; h: number }): void {
+    const { ctx } = this;
+    const look = { ...defaultCameraLook(), ...layer.cam };
+    const p = this.place({ w: v.videoWidth, h: v.videoHeight }, box, layer.fit);
+    // zoom: look at a smaller window of the picture, moved by the shift
+    let { sx, sy, sw, sh } = p;
+    if (look.zoom > 1) {
+      const zw = sw / look.zoom;
+      const zh = sh / look.zoom;
+      sx += (sw - zw) / 2 + (look.shiftX * (sw - zw)) / 2;
+      sy += (sh - zh) / 2 + (look.shiftY * (sh - zh)) / 2;
+      sw = zw;
+      sh = zh;
+    }
+    ctx.save();
+    // the window the picture shows through
+    const radius = look.shape === "circle" ? Math.min(p.dw, p.dh) / 2 : look.shape === "rounded" ? Math.min(p.dw, p.dh) * 0.12 : 0;
+    const path = new Path2D();
+    if (look.shape === "circle") {
+      const side = Math.min(p.dw, p.dh);
+      path.roundRect(p.dx + (p.dw - side) / 2, p.dy + (p.dh - side) / 2, side, side, radius);
+    } else {
+      path.roundRect(p.dx, p.dy, p.dw, p.dh, radius);
+    }
+    ctx.clip(path);
+    if (look.brightness !== 1 || look.contrast !== 1 || look.saturation !== 1) {
+      ctx.filter = `brightness(${look.brightness}) contrast(${look.contrast}) saturate(${look.saturation})`;
+    }
+    if (look.shape === "circle") {
+      // a square crop from the middle so the circle is not stretched
+      const side = Math.min(sw, sh);
+      sx += (sw - side) / 2;
+      sy += (sh - side) / 2;
+      sw = sh = side;
+    }
+    const dx = look.shape === "circle" ? p.dx + (p.dw - Math.min(p.dw, p.dh)) / 2 : p.dx;
+    const dy = look.shape === "circle" ? p.dy + (p.dh - Math.min(p.dw, p.dh)) / 2 : p.dy;
+    const dw = look.shape === "circle" ? Math.min(p.dw, p.dh) : p.dw;
+    const dh = look.shape === "circle" ? Math.min(p.dw, p.dh) : p.dh;
+    if (layer.mirror) {
+      ctx.translate(dx + dw, dy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(v, sx, sy, sw, sh, 0, 0, dw, dh);
+    } else {
+      ctx.drawImage(v, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
+    ctx.restore();
+    if (look.borderWidth > 0) {
+      ctx.save();
+      ctx.lineWidth = look.borderWidth * (this.canvas.height / 720);
+      ctx.strokeStyle = look.borderColor;
+      ctx.stroke(path);
+      ctx.restore();
+    }
+  }
+
   draw(): void {
     const { ctx, canvas } = this;
     const W = canvas.width;
@@ -356,18 +442,7 @@ export class Compositor {
         }
       } else if (layer.kind === "camera") {
         const v = this.camera;
-        if (v && v.readyState >= 2 && v.videoWidth) {
-          const p = this.place({ w: v.videoWidth, h: v.videoHeight }, box, layer.fit);
-          if (layer.mirror) {
-            ctx.save();
-            ctx.translate(p.dx + p.dw, p.dy);
-            ctx.scale(-1, 1);
-            ctx.drawImage(v, p.sx, p.sy, p.sw, p.sh, 0, 0, p.dw, p.dh);
-            ctx.restore();
-          } else {
-            ctx.drawImage(v, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
-          }
-        }
+        if (v && v.readyState >= 2 && v.videoWidth) this.drawCamera(v, layer, box);
       } else if (layer.kind === "image") {
         const img = this.image(layer);
         if (img) {
@@ -427,6 +502,13 @@ export class Mixer {
   private bus: GainNode;
   private monitor: GainNode;
   private capture: ScriptProcessorNode;
+  private songGain: GainNode;
+  private songAnalyser: AnalyserNode;
+  private song: { el: HTMLAudioElement; url: string; id: string } | null = null;
+  private ps5Volume = 1;
+  private micVolume = 1;
+  private ps5Muted = false;
+  private micMuted = false;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private micStream: MediaStream | null = null;
   onPcm: ((pcm: Int16Array) => void) | null = null;
@@ -454,6 +536,9 @@ export class Mixer {
     this.micAnalyser = this.ctx.createAnalyser();
     this.micAnalyser.fftSize = 1024;
     this.bus = this.ctx.createGain();
+    this.songGain = this.ctx.createGain();
+    this.songAnalyser = this.ctx.createAnalyser();
+    this.songAnalyser.fftSize = 1024;
     this.monitor = this.ctx.createGain();
     this.monitor.gain.value = 0;
     this.ps5Node.connect(this.ps5Gain);
@@ -461,6 +546,9 @@ export class Mixer {
     this.ps5Gain.connect(this.bus);
     this.ps5Gain.connect(this.monitor);
     this.monitor.connect(this.ctx.destination);
+    this.songGain.connect(this.songAnalyser);
+    this.songGain.connect(this.bus);
+    this.songGain.connect(this.monitor);
     this.micGain.connect(this.micAnalyser);
     this.micGain.connect(this.bus);
     // stereo capture of the program mix; its output is silent but must be connected to keep running
@@ -490,11 +578,64 @@ export class Mixer {
     if (this.ctx.state !== "running") await this.ctx.resume();
   }
 
+  private applyGains(): void {
+    // short ramps so a mute or scene change never clicks
+    const t = this.ctx.currentTime;
+    this.ps5Gain.gain.setTargetAtTime(this.ps5Muted ? 0 : this.ps5Volume, t, 0.03);
+    this.micGain.gain.setTargetAtTime(this.micMuted ? 0 : this.micVolume, t, 0.03);
+  }
   setPs5Volume(v: number): void {
-    this.ps5Gain.gain.value = v;
+    this.ps5Volume = v;
+    this.applyGains();
   }
   setMicVolume(v: number): void {
-    this.micGain.gain.value = v;
+    this.micVolume = v;
+    this.applyGains();
+  }
+  /** Scene-level mutes: the sliders keep their place, the sound just stops. */
+  setMutes(ps5: boolean, mic: boolean): void {
+    this.ps5Muted = ps5;
+    this.micMuted = mic;
+    this.applyGains();
+  }
+
+  /** Plays a song through the stream mix. Same id again only updates volume and loop. */
+  async playSong(id: string, blob: Blob, volume: number, loop: boolean): Promise<void> {
+    if (this.song?.id === id) {
+      this.song.el.loop = loop;
+      this.setSongVolume(volume);
+      if (this.song.el.paused) await this.song.el.play();
+      return;
+    }
+    this.stopSong();
+    const url = URL.createObjectURL(blob);
+    const el = new Audio(url);
+    el.loop = loop;
+    this.song = { el, url, id };
+    this.ctx.createMediaElementSource(el).connect(this.songGain);
+    this.songGain.gain.value = 0;
+    await el.play();
+    this.songGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.4); // fade in
+  }
+  setSongVolume(v: number): void {
+    this.songGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+  }
+  stopSong(): void {
+    const song = this.song;
+    if (!song) return;
+    this.song = null;
+    this.songGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.25); // fade out
+    window.setTimeout(() => {
+      song.el.pause();
+      song.el.removeAttribute("src");
+      URL.revokeObjectURL(song.url);
+    }, 900);
+  }
+  get songId(): string | null {
+    return this.song?.id ?? null;
+  }
+  songDb(): number {
+    return this.level(this.songAnalyser);
   }
   setMonitor(on: boolean): void {
     this.monitor.gain.value = on ? 1 : 0;
@@ -544,6 +685,7 @@ export class Mixer {
   }
 
   dispose(): void {
+    this.stopSong();
     this.micStream?.getTracks().forEach((t) => t.stop());
     void this.ctx.close();
   }
@@ -621,6 +763,29 @@ export class ProgramEncoder {
     }, 4);
   }
 
+  /** Change the target bitrate while on air. Returns false when the encoder refused. */
+  setBitrate(kbps: number, s: EncoderSettings): boolean {
+    const enc = this.encoder;
+    if (!enc || enc.state !== "configured") return false;
+    try {
+      enc.configure({
+        codec: `avc1.${s.height >= 1080 ? "640028" : "64001f"}`,
+        width: s.width,
+        height: s.height,
+        bitrate: kbps * 1000,
+        framerate: s.fps,
+        latencyMode: "realtime",
+        hardwareAcceleration: "prefer-hardware",
+        avc: { format: "annexb" },
+        bitrateMode: "constant",
+      });
+      this.keyAt = 0; // ask for a fresh keyframe so the new rate starts clean
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   stop(): void {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;
@@ -665,9 +830,70 @@ export function readPad(): { name: string; state: Ps5PadState } | null {
 
 const STORE_KEY = "pulsecast.studio.v1";
 
+/** Everything that should come back the way you left it. */
+export interface StudioPrefs {
+  camId?: string;
+  micId?: string;
+  camOn?: boolean;
+  camRes?: "720" | "1080";
+  ps5Vol?: number;
+  micVol?: number;
+  monitor?: boolean;
+  padOn?: boolean;
+  preset?: string;
+  picked?: Partial<Record<"twitch" | "facebook", boolean>>;
+  adaptive?: boolean;
+  uploadKbps?: number;
+}
+
 export interface StudioSave {
   scenes: Scene[];
   activeId: string;
+  prefs?: StudioPrefs;
+}
+
+/* songs live in IndexedDB: they are far bigger than localStorage allows */
+
+function songDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open("pulsecast-studio", 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("songs");
+    open.onsuccess = () => resolve(open.result);
+    open.onerror = () => reject(open.error);
+  });
+}
+
+export async function putSong(id: string, blob: Blob): Promise<void> {
+  const db = await songDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("songs", "readwrite");
+    tx.objectStore("songs").put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function getSong(id: string): Promise<Blob | null> {
+  const db = await songDb();
+  const blob = await new Promise<Blob | null>((resolve, reject) => {
+    const req = db.transaction("songs").objectStore("songs").get(id);
+    req.onsuccess = () => resolve((req.result as Blob | undefined) ?? null);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return blob;
+}
+
+export async function deleteSong(id: string): Promise<void> {
+  const db = await songDb();
+  await new Promise<void>((resolve) => {
+    const tx = db.transaction("songs", "readwrite");
+    tx.objectStore("songs").delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+  db.close();
 }
 
 export function loadStudio(): StudioSave {

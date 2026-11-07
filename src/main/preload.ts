@@ -46,6 +46,7 @@ const bridge: PulseCastBridge = {
   },
   ps5EndLive: () => ipcRenderer.invoke("pulsecast:ps5:end-live"),
   ps5SetKey: (platform, key) => ipcRenderer.invoke("pulsecast:ps5:set-key", platform, key),
+  netUploadTest: () => ipcRenderer.invoke("pulsecast:net:upload-test"),
   ps5SetAutoReconnect: (on) => ipcRenderer.send("pulsecast:ps5:auto-reconnect", Boolean(on)),
   ps5Input: (state) => ipcRenderer.send("pulsecast:ps5:input", state),
   subscribePs5Video: (listener) => {

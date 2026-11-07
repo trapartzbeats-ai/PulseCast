@@ -4374,3 +4374,30 @@ button:disabled {
 .sx input[type="checkbox"] {
   accent-color: var(--signal);
 }
+
+/* scene sound + connection panels */
+.sx-song {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sx-song__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.sx-net {
+  display: grid;
+  gap: 8px;
+}
+.sx-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent, #d8ff3e);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}

@@ -526,6 +526,8 @@ export interface Ps5Bridge {
   ps5SetKey(platform: Ps5Platform, key: string): Promise<Ps5Status>;
   /** When off, a dropped PS5 session ends the run instead of reconnecting (default on). Takes effect immediately. */
   ps5SetAutoReconnect(on: boolean): void;
+  /** Sends throwaway bytes to a public speed-test server for a few seconds and reports this PC's upload speed. */
+  netUploadTest(): Promise<{ kbps: number; seconds: number }>;
   /** Controller state read from a gamepad on this PC, sent to the PS5 over Remote Play. */
   ps5Input(state: Ps5PadState): void;
   subscribePs5Video(listener: (packet: Ps5VideoPacket) => void): () => void;
