@@ -535,6 +535,11 @@ export interface Ps5Bridge {
   /** Read a Twitch channel's chat (anonymous, read-only). Messages and sub/raid alerts arrive through subscribeChat. */
   chatConnect(channel: string): Promise<void>;
   chatDisconnect(): Promise<void>;
+  /** Facebook Page live comments. The token is stored with Windows secure storage and never returned. */
+  chatFacebookSetToken(token: string): Promise<boolean>;
+  chatFacebookHasToken(): Promise<boolean>;
+  chatFacebookConnect(): Promise<void>;
+  chatFacebookDisconnect(): Promise<void>;
   subscribeChat(listener: (event: ChatEvent) => void): () => void;
   /** System-wide keys that work while a game has focus: Ctrl+Alt+B (panic scene), Ctrl+Alt+M (mute mic). */
   subscribeHotkeys(listener: (action: "panic" | "mic") => void): () => void;
@@ -543,7 +548,12 @@ export interface Ps5Bridge {
 export type ChatEvent =
   | { type: "message"; id: string; user: string; color: string; text: string }
   | { type: "alert"; id: string; title: string; detail: string }
-  | { type: "status"; state: "off" | "connecting" | "on" | "error"; detail: string };
+  | {
+      type: "status";
+      source: "twitch" | "facebook";
+      state: "off" | "connecting" | "on" | "error";
+      detail: string;
+    };
 
 export interface PulseCastBridge extends Ps5Bridge {
   getSnapshot(): Promise<CoreState>;

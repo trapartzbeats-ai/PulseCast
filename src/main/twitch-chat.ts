@@ -38,12 +38,12 @@ export class TwitchChat {
       } catch {
         // already closed
       }
-      this.emit({ type: "status", state: "off", detail: "" });
+      this.emit({ type: "status", source: "twitch", state: "off", detail: "" });
     }
   }
 
   private open(): void {
-    this.emit({ type: "status", state: "connecting", detail: this.channel });
+    this.emit({ type: "status", source: "twitch", state: "connecting", detail: this.channel });
     const socket = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
     this.socket = socket;
     socket.addEventListener("open", () => {
@@ -60,11 +60,21 @@ export class TwitchChat {
       this.socket = null;
       if (!this.wanted) return;
       this.attempts += 1;
-      this.emit({ type: "status", state: "connecting", detail: `reconnecting (${this.attempts})` });
+      this.emit({
+        type: "status",
+        source: "twitch",
+        state: "connecting",
+        detail: `reconnecting (${this.attempts})`,
+      });
       this.retry = setTimeout(() => this.open(), Math.min(30_000, 1500 * this.attempts));
     });
     socket.addEventListener("error", () => {
-      this.emit({ type: "status", state: "error", detail: "chat connection problem" });
+      this.emit({
+        type: "status",
+        source: "twitch",
+        state: "error",
+        detail: "chat connection problem",
+      });
     });
   }
 
@@ -88,7 +98,7 @@ export class TwitchChat {
     const trailing = rest.includes(" :") ? rest.slice(rest.indexOf(" :", 1) + 2) : "";
     if (command === "366") {
       this.attempts = 0;
-      this.emit({ type: "status", state: "on", detail: this.channel });
+      this.emit({ type: "status", source: "twitch", state: "on", detail: this.channel });
     } else if (command === "PRIVMSG") {
       this.emit({
         type: "message",
@@ -124,7 +134,7 @@ export class TwitchChat {
         });
       }
     } else if (command === "NOTICE" && /Login unsuccessful|Improperly formatted/.test(trailing)) {
-      this.emit({ type: "status", state: "error", detail: trailing });
+      this.emit({ type: "status", source: "twitch", state: "error", detail: trailing });
     }
   }
 }

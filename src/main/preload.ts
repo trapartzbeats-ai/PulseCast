@@ -64,6 +64,10 @@ const bridge: PulseCastBridge = {
   },
   chatConnect: (channel) => ipcRenderer.invoke("pulsecast:chat:connect", channel),
   chatDisconnect: () => ipcRenderer.invoke("pulsecast:chat:disconnect"),
+  chatFacebookSetToken: (token) => ipcRenderer.invoke("pulsecast:chat:fb-set-token", token),
+  chatFacebookHasToken: () => ipcRenderer.invoke("pulsecast:chat:fb-has-token"),
+  chatFacebookConnect: () => ipcRenderer.invoke("pulsecast:chat:fb-connect"),
+  chatFacebookDisconnect: () => ipcRenderer.invoke("pulsecast:chat:fb-disconnect"),
   subscribeChat: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, chat: Parameters<typeof listener>[0]) =>
       listener(chat);

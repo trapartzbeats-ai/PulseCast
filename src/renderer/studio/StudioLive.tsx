@@ -129,10 +129,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const [micHeard, setMicHeard] = useState(false);
   const [micOverride, setMicOverride] = useState(false);
   const [chatChannel, setChatChannel] = useState(save.prefs?.chatChannel ?? "");
-  const [chatState, setChatState] = useState<{
-    state: "off" | "connecting" | "on" | "error";
-    detail: string;
-  }>({ state: "off", detail: "" });
+  type ChatLink = { state: "off" | "connecting" | "on" | "error"; detail: string };
+  const [chatState, setChatState] = useState<ChatLink>({ state: "off", detail: "" });
+  const [fbState, setFbState] = useState<ChatLink>({ state: "off", detail: "" });
+  const [fbTokenSet, setFbTokenSet] = useState(false);
+  const [fbDraft, setFbDraft] = useState("");
   const [testing, setTesting] = useState(false);
   const [netNote, setNetNote] = useState("");
   const [liveRate, setLiveRate] = useState(0);
@@ -700,6 +701,11 @@ export function StudioLive({ onBack }: { onBack(): void }) {
         await bridge.ps5EndLive();
         throw error;
       }
+      // follow chat for the shows that have it set up; a failure here never stops the stream
+      if (fbTokenSet && picked.facebook && fbState.state === "off")
+        void bridge.chatFacebookConnect().catch(() => undefined);
+      if (chatChannel.trim() && picked.twitch && chatState.state === "off")
+        void bridge.chatConnect(chatChannel).catch(() => undefined);
       return result;
     });
 
@@ -777,10 +783,15 @@ export function StudioLive({ onBack }: { onBack(): void }) {
           });
         else if (event.type === "alert")
           chatFeed.pushAlert({ id: event.id, title: event.title, detail: event.detail });
+        else if (event.source === "facebook")
+          setFbState({ state: event.state, detail: event.detail });
         else setChatState({ state: event.state, detail: event.detail });
       }),
     [],
   );
+  useEffect(() => {
+    void bridge.chatFacebookHasToken().then(setFbTokenSet);
+  }, []);
   const connectChat = () =>
     run(async () => {
       await bridge.chatConnect(chatChannel);
@@ -1805,9 +1816,79 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                       : "not connected"}
               </span>
               <small className="deck__hint">
-                Reads Twitch chat with no login. Add a “+ Chat” source to show it on the stream, and
-                “+ Alerts” for sub, gift and raid pop-ups. Facebook chat is not here yet: it needs a
-                Facebook access token.
+                Twitch chat is read with no login. Add a “+ Chat” source to show it on the stream,
+                and “+ Alerts” for sub, gift and raid pop-ups.
+              </small>
+
+              <div className="dest__key">
+                <input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={
+                    fbTokenSet
+                      ? "Facebook Page token saved. Paste a new one to replace"
+                      : "Facebook Page access token"
+                  }
+                  value={fbDraft}
+                  onChange={(e) => setFbDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  disabled={!fbDraft.trim()}
+                  onClick={() => {
+                    const value = fbDraft;
+                    setFbDraft("");
+                    void run(async () => {
+                      setFbTokenSet(await bridge.chatFacebookSetToken(value));
+                    });
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+              <div className="sx-row">
+                {fbState.state === "off" || fbState.state === "error" ? (
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    disabled={!fbTokenSet || busy}
+                    onClick={() => void run(() => bridge.chatFacebookConnect())}
+                  >
+                    Connect Facebook chat
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={() => void bridge.chatFacebookDisconnect()}
+                  >
+                    Disconnect Facebook chat
+                  </button>
+                )}
+                {fbTokenSet && (
+                  <button
+                    type="button"
+                    className="sx-link"
+                    onClick={() =>
+                      void run(async () => setFbTokenSet(await bridge.chatFacebookSetToken("")))
+                    }
+                  >
+                    Forget token
+                  </button>
+                )}
+              </div>
+              <span className={`dest__state ${fbState.state === "on" ? "dest__state--live" : ""}`}>
+                {fbState.state === "off"
+                  ? fbTokenSet
+                    ? "Facebook chat: not connected"
+                    : "Facebook chat: needs a Page token (Pages only, not profiles)"
+                  : `Facebook chat: ${fbState.detail || fbState.state}`}
+              </span>
+              <small className="deck__hint">
+                Facebook only shares live comments for Pages. The token is stored encrypted on this
+                PC. It connects by itself when you go live, and follows the stream if it drops.
               </small>
             </div>
 

@@ -84,6 +84,11 @@ describe("Twitch anonymous chat reader", () => {
     socket.fire("message", {
       data: ":nick.tmi.twitch.tv 366 nick #somechannel :End of /NAMES list\r\n",
     });
-    expect(events).toContainEqual({ type: "status", state: "on", detail: "somechannel" });
+    expect(events).toContainEqual({
+      type: "status",
+      source: "twitch",
+      state: "on",
+      detail: "somechannel",
+    });
   });
 });

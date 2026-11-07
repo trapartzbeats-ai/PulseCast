@@ -1,5 +1,13 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen, session } from "electron";
-import { mkdir } from "node:fs/promises";
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  safeStorage,
+  screen,
+  session,
+} from "electron";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { probeAdapters, runNativeCaptureProof } from "../core/adapters";
 import { MediaHostClient } from "../core/media-host-client";
@@ -13,10 +21,13 @@ import type {
 import { registerFfmpegMediaIpc } from "./ffmpeg-media-ipc";
 import { uploadTest } from "./net-test";
 import { Ps5Relay } from "./ps5-relay";
+import { FacebookChat } from "./facebook-chat";
 import { TwitchChat } from "./twitch-chat";
 
 let ps5: Ps5Relay | null = null;
 let chat: TwitchChat | null = null;
+let fbChat: FacebookChat | null = null;
+let fbToken = "";
 let mainWindow: BrowserWindow | null = null;
 let runtime: CoreRuntime | null = null;
 let mediaIpc: ReturnType<typeof registerFfmpegMediaIpc> | null = null;
@@ -69,6 +80,21 @@ function physicalPreviewBounds(
   };
 }
 
+function fbTokenFile(): string {
+  return path.join(app.getPath("userData"), "fb-chat-token.json");
+}
+
+async function loadFacebookToken(): Promise<void> {
+  try {
+    const raw = JSON.parse(await readFile(fbTokenFile(), "utf8")) as { token?: string };
+    if (raw.token && safeStorage.isEncryptionAvailable()) {
+      fbToken = safeStorage.decryptString(Buffer.from(raw.token, "base64"));
+    }
+  } catch {
+    // no token saved yet
+  }
+}
+
 function registerPs5Ipc(): void {
   ps5 = new Ps5Relay({
     psDir: process.env.PULSECAST_PS_DIR
@@ -97,6 +123,26 @@ function registerPs5Ipc(): void {
     chat!.connect(String(channel)),
   );
   ipcMain.handle("pulsecast:chat:disconnect", () => chat!.disconnect());
+  fbChat = new FacebookChat((event) => mainWindow?.webContents.send("pulsecast:chat", event));
+  void loadFacebookToken();
+  ipcMain.handle("pulsecast:chat:fb-set-token", async (_event, token: string) => {
+    const value = String(token).trim();
+    if (value && !safeStorage.isEncryptionAvailable()) {
+      throw new Error("Windows secure storage is unavailable; the token was not saved.");
+    }
+    fbToken = value;
+    await mkdir(app.getPath("userData"), { recursive: true });
+    await writeFile(
+      fbTokenFile(),
+      JSON.stringify({ token: value ? safeStorage.encryptString(value).toString("base64") : "" }),
+      "utf8",
+    );
+    if (!value) fbChat?.disconnect();
+    return Boolean(value);
+  });
+  ipcMain.handle("pulsecast:chat:fb-has-token", () => Boolean(fbToken));
+  ipcMain.handle("pulsecast:chat:fb-connect", () => fbChat!.connect(fbToken));
+  ipcMain.handle("pulsecast:chat:fb-disconnect", () => fbChat!.disconnect());
   ipcMain.on("pulsecast:ps5:auto-reconnect", (_event, on) => ps5?.setAutoReconnect(Boolean(on)));
   ipcMain.handle("pulsecast:ps5:end-live", () => ps5!.endLive());
   ipcMain.handle("pulsecast:ps5:set-key", (_event, platform, key: string) =>
@@ -258,6 +304,7 @@ app.on("before-quit", (event) => {
   event.preventDefault();
   ps5?.dispose();
   chat?.disconnect();
+  fbChat?.disconnect();
   void Promise.all([mediaHostClient?.stop(), mediaIpc?.dispose(), runtime?.close()])
     .catch(() => undefined)
     .finally(() => {

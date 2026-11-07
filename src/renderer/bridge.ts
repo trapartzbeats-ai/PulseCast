@@ -262,6 +262,18 @@ const browserBridge: PulseCastBridge = {
   async chatConnect() {
     throw new Error("Chat can only be read from the PulseCast app.");
   },
+  async chatFacebookSetToken() {
+    return false;
+  },
+  async chatFacebookHasToken() {
+    return false;
+  },
+  async chatFacebookConnect() {
+    throw new Error("Chat can only be read from the PulseCast app.");
+  },
+  async chatFacebookDisconnect() {
+    // nothing to close in a plain browser
+  },
   async chatDisconnect() {
     // nothing to close in a plain browser
   },
