@@ -259,6 +259,9 @@ const browserBridge: PulseCastBridge = {
   subscribePs5Status() {
     return () => undefined;
   },
+  async listCaptureSources() {
+    return [];
+  },
   async chatConnect() {
     throw new Error("Chat can only be read from the PulseCast app.");
   },

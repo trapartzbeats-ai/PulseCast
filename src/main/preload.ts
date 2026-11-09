@@ -62,6 +62,7 @@ const bridge: PulseCastBridge = {
     ipcRenderer.on("pulsecast:ps5:status", handler);
     return () => ipcRenderer.removeListener("pulsecast:ps5:status", handler);
   },
+  listCaptureSources: () => ipcRenderer.invoke("pulsecast:capture:list"),
   chatConnect: (channel) => ipcRenderer.invoke("pulsecast:chat:connect", channel),
   chatDisconnect: () => ipcRenderer.invoke("pulsecast:chat:disconnect"),
   chatFacebookSetToken: (token) => ipcRenderer.invoke("pulsecast:chat:fb-set-token", token),

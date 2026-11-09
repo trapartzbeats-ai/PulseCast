@@ -5,7 +5,8 @@ const bridge = getBridge();
 
 /* ------------------------------------------------------------------ scene model */
 
-export type LayerKind = "ps5" | "camera" | "text" | "image" | "chat" | "alert" | "counter";
+export type LayerKind =
+  "ps5" | "camera" | "text" | "image" | "chat" | "alert" | "counter" | "screen";
 
 export interface Layer {
   id: string;
@@ -32,6 +33,8 @@ export interface Layer {
   };
   /** data: URL for image layers */
   image?: string;
+  /** A screen or window on this PC. The id only lasts while the app runs; the name finds it again. */
+  screen?: { sourceId: string; name: string; kind: "screen" | "window" };
   /** Live chat from the connected Twitch channel: how many lines, text size, seconds before a line fades (0 = stay). */
   chat?: { lines: number; size: number; fadeSec: number };
   /** Pop-up banner for sub / raid alerts (and the Test alert button). */
@@ -129,6 +132,7 @@ export function makeLayer(kind: LayerKind, extra: Partial<Layer> = {}): Layer {
       chat: "Chat",
       alert: "Alerts",
       counter: "Counter",
+      screen: "Screen",
     }[kind],
     x: 0,
     y: 0,
@@ -136,7 +140,7 @@ export function makeLayer(kind: LayerKind, extra: Partial<Layer> = {}): Layer {
     h: 1,
     opacity: 1,
     visible: true,
-    fit: kind === "ps5" ? "contain" : "cover",
+    fit: kind === "ps5" || kind === "screen" ? "contain" : "cover",
   };
   if (kind === "camera")
     Object.assign(base, {
@@ -455,6 +459,8 @@ export class Compositor {
   private ctx: CanvasRenderingContext2D;
   private images = new Map<string, HTMLImageElement>();
   camera: HTMLVideoElement | null = null;
+  /** Playing screen / window captures, by layer id. */
+  screens = new Map<string, HTMLVideoElement>();
   scene: Scene | null = null;
   /** Burn this PC's clock into the picture so the delay on a platform can be read off. */
   clock = false;
@@ -730,6 +736,12 @@ export class Compositor {
         if (img) {
           const p = this.place({ w: img.naturalWidth, h: img.naturalHeight }, box, layer.fit);
           ctx.drawImage(img, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
+        }
+      } else if (layer.kind === "screen") {
+        const v = this.screens.get(layer.id);
+        if (v && v.readyState >= 2 && v.videoWidth) {
+          const p = this.place({ w: v.videoWidth, h: v.videoHeight }, box, layer.fit);
+          ctx.drawImage(v, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
         }
       } else if (layer.kind === "chat" && layer.chat) {
         this.drawChat(layer, box);

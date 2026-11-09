@@ -532,6 +532,8 @@ export interface Ps5Bridge {
   ps5Input(state: Ps5PadState): void;
   subscribePs5Video(listener: (packet: Ps5VideoPacket) => void): () => void;
   subscribePs5Status(listener: (status: Ps5Status) => void): () => void;
+  /** Screens and open windows (browsers included) that can be shown on the stream. */
+  listCaptureSources(): Promise<CaptureSource[]>;
   /** Read a Twitch channel's chat (anonymous, read-only). Messages and sub/raid alerts arrive through subscribeChat. */
   chatConnect(channel: string): Promise<void>;
   chatDisconnect(): Promise<void>;
@@ -543,6 +545,14 @@ export interface Ps5Bridge {
   subscribeChat(listener: (event: ChatEvent) => void): () => void;
   /** System-wide keys that work while a game has focus: Ctrl+Alt+B (panic scene), Ctrl+Alt+M (mute mic). */
   subscribeHotkeys(listener: (action: "panic" | "mic") => void): () => void;
+}
+
+/** A screen or window the user can put on the stream. Thumbnails are small data URLs shown only in the picker. */
+export interface CaptureSource {
+  id: string;
+  name: string;
+  kind: "screen" | "window";
+  thumb: string;
 }
 
 export type ChatEvent =

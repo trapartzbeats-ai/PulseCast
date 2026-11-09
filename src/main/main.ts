@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   safeStorage,
@@ -118,6 +119,21 @@ function registerPs5Ipc(): void {
   ipcMain.on("pulsecast:ps5:out-video", (_event, packet) => ps5?.feedOutVideo(packet));
   ipcMain.on("pulsecast:ps5:out-audio", (_event, pcm) => ps5?.feedOutAudio(pcm));
   ipcMain.handle("pulsecast:net:upload-test", () => uploadTest());
+  ipcMain.handle("pulsecast:capture:list", async () => {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen", "window"],
+      thumbnailSize: { width: 320, height: 180 },
+      fetchWindowIcons: false,
+    });
+    return sources
+      .filter((s) => s.name.trim().length > 0)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        kind: s.id.startsWith("screen:") ? ("screen" as const) : ("window" as const),
+        thumb: s.thumbnail.isEmpty() ? "" : s.thumbnail.toDataURL(),
+      }));
+  });
   chat = new TwitchChat((event) => mainWindow?.webContents.send("pulsecast:chat", event));
   ipcMain.handle("pulsecast:chat:connect", (_event, channel: string) =>
     chat!.connect(String(channel)),

@@ -4441,3 +4441,71 @@ button:disabled {
 .sx-muted {
   color: #ff5a4f;
 }
+
+/* screen / window picker */
+.sx-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 5, 7, 0.78);
+}
+.sx-modal__box {
+  width: min(900px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #222b34;
+  border-radius: 14px;
+  background: #0d1116;
+}
+.sx-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sx-modal__tools {
+  display: flex;
+  gap: 8px;
+}
+.sx-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.sx-source {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  text-align: left;
+  color: inherit;
+  background: #121820;
+  border: 1px solid #222b34;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.sx-source:hover,
+.sx-source:focus-visible {
+  border-color: var(--accent, #d8ff3e);
+}
+.sx-source img,
+.sx-source__none {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #050607;
+}
+.sx-source strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.sx-source small {
+  opacity: 0.6;
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Ps5Platform, Ps5Status } from "../../shared/contracts";
+import type { CaptureSource, Ps5Platform, Ps5Status } from "../../shared/contracts";
 import { getBridge } from "../bridge";
 import {
   Compositor,
@@ -70,6 +70,7 @@ const KIND_LABEL: Record<LayerKind, string> = {
   chat: "Chat",
   alert: "Alerts",
   counter: "Counter",
+  screen: "Screen / window",
 };
 
 function dbToPercent(db: number): number {
@@ -134,6 +135,9 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const [fbState, setFbState] = useState<ChatLink>({ state: "off", detail: "" });
   const [fbTokenSet, setFbTokenSet] = useState(false);
   const [fbDraft, setFbDraft] = useState("");
+  const [picker, setPicker] = useState<null | { layerId: string | null }>(null);
+  const [sources, setSources] = useState<CaptureSource[]>([]);
+  const [sourcesBusy, setSourcesBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [netNote, setNetNote] = useState("");
   const [liveRate, setLiveRate] = useState(0);
@@ -167,6 +171,10 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const camStream = useRef<MediaStream | null>(null);
+  const capHost = useRef<HTMLDivElement>(null);
+  const caps = useRef(
+    new Map<string, { key: string; stream: MediaStream; video: HTMLVideoElement }>(),
+  );
   const live = status?.live ?? false;
   const ps5Running = status?.running ?? false;
   const preview = PRESETS.find((p) => p.id === preset) ?? PRESETS[1];
@@ -419,6 +427,121 @@ export function StudioLive({ onBack }: { onBack(): void }) {
       cancelled = true;
     };
   }, [camOn, camId, camRes, comp]);
+
+  /* ---- screens and windows: capture only what the live scene shows ---- */
+  const screenKey = scene.layers
+    .filter((l) => l.kind === "screen" && l.visible && l.screen?.sourceId)
+    .map((l) => `${l.id}|${l.screen!.sourceId}`)
+    .join(",");
+  useEffect(() => {
+    const wanted = new Map<string, string>();
+    for (const part of screenKey ? screenKey.split(",") : []) {
+      const [layerId, sourceId] = part.split("|");
+      wanted.set(layerId, sourceId);
+    }
+    const release = (layerId: string) => {
+      const cap = caps.current.get(layerId);
+      if (!cap) return;
+      cap.stream.getTracks().forEach((t) => t.stop());
+      cap.video.remove();
+      caps.current.delete(layerId);
+      comp.screens.delete(layerId);
+    };
+    for (const layerId of [...caps.current.keys()]) {
+      if (wanted.get(layerId) !== caps.current.get(layerId)!.key) release(layerId);
+    }
+    let cancelled = false;
+    for (const [layerId, sourceId] of wanted) {
+      if (caps.current.has(layerId)) continue;
+      void navigator.mediaDevices
+        .getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: sourceId,
+              maxFrameRate: 30,
+              maxWidth: 1920,
+              maxHeight: 1080,
+            },
+          },
+        } as unknown as MediaStreamConstraints)
+        .then((stream) => {
+          if (cancelled || caps.current.has(layerId)) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          const video = document.createElement("video");
+          video.muted = true;
+          video.playsInline = true;
+          video.className = "sx-hidden-video";
+          video.srcObject = stream;
+          capHost.current?.appendChild(video);
+          void video.play().catch(() => undefined);
+          caps.current.set(layerId, { key: sourceId, stream, video });
+          comp.screens.set(layerId, video);
+          // the window or screen closing ends the capture; say so instead of showing a frozen picture
+          stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+            release(layerId);
+            setProblem("A captured screen or window closed. Pick it again.");
+          });
+        })
+        .catch((e) =>
+          setProblem(`Screen capture: ${e instanceof Error ? e.message : "could not start"}`),
+        );
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [screenKey, comp]);
+  useEffect(
+    () => () => {
+      for (const cap of caps.current.values()) cap.stream.getTracks().forEach((t) => t.stop());
+      caps.current.clear();
+      comp.screens.clear();
+    },
+    [comp],
+  );
+
+  /* after a restart window ids are new: find each saved window again by its name */
+  useEffect(() => {
+    void bridge.listCaptureSources().then((list) => {
+      setSave((prev) => {
+        let changed = false;
+        const scenes = prev.scenes.map((s) => ({
+          ...s,
+          layers: s.layers.map((l) => {
+            if (l.kind !== "screen" || !l.screen) return l;
+            if (list.some((x) => x.id === l.screen!.sourceId)) return l;
+            const match = list.find((x) => x.kind === l.screen!.kind && x.name === l.screen!.name);
+            if (!match) return l;
+            changed = true;
+            return { ...l, screen: { ...l.screen, sourceId: match.id } };
+          }),
+        }));
+        return changed ? { ...prev, scenes } : prev;
+      });
+    });
+  }, []);
+
+  const openPicker = (layerId: string | null) => {
+    setPicker({ layerId });
+    setSourcesBusy(true);
+    void bridge
+      .listCaptureSources()
+      .then(setSources)
+      .catch(() => setSources([]))
+      .finally(() => setSourcesBusy(false));
+  };
+  const pickSource = (src: CaptureSource) => {
+    const screenInfo = { sourceId: src.id, name: src.name, kind: src.kind };
+    if (picker?.layerId) {
+      updateLayer(picker.layerId, { screen: screenInfo, name: src.name.slice(0, 40) });
+    } else {
+      addLayer("screen", { screen: screenInfo, name: src.name.slice(0, 40) });
+    }
+    setPicker(null);
+  };
 
   /* ---- controller from this PC ---- */
   useEffect(() => {
@@ -870,6 +993,62 @@ export function StudioLive({ onBack }: { onBack(): void }) {
   return (
     <main className="sx" data-testid="studio-live">
       <video ref={videoRef} className="sx-hidden-video" muted playsInline />
+      <div ref={capHost} aria-hidden="true" />
+      {picker && (
+        <div className="sx-modal" role="dialog" aria-label="Choose a screen or window">
+          <div className="sx-modal__box">
+            <header className="sx-modal__head">
+              <strong>Show a screen or window</strong>
+              <span className="sx-modal__tools">
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => openPicker(picker.layerId)}
+                >
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => setPicker(null)}
+                >
+                  Cancel
+                </button>
+              </span>
+            </header>
+            <small className="deck__hint">
+              Only the one you pick goes on the stream. A browser shows up as a window: pick the one
+              with your tab in front. Switching tabs in it changes what viewers see.
+            </small>
+            {sourcesBusy && <p className="sx-empty">Looking…</p>}
+            <div className="sx-modal__grid">
+              {(["screen", "window"] as const).map((kind) =>
+                sources
+                  .filter((s) => s.kind === kind)
+                  .map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="sx-source"
+                      onClick={() => pickSource(s)}
+                    >
+                      {s.thumb ? (
+                        <img src={s.thumb} alt="" />
+                      ) : (
+                        <span className="sx-source__none" />
+                      )}
+                      <strong>{s.name}</strong>
+                      <small>{kind === "screen" ? "whole screen" : "window"}</small>
+                    </button>
+                  )),
+              )}
+            </div>
+            {!sourcesBusy && sources.length === 0 && (
+              <p className="sx-empty">Nothing found to show.</p>
+            )}
+          </div>
+        </div>
+      )}
       <header className="sx-top">
         <button className="golive__back" type="button" onClick={onBack}>
           ← Launch
@@ -1071,6 +1250,13 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                 onClick={() => addLayer("text")}
               >
                 + Text
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => openPicker(null)}
+              >
+                + Screen / window
               </button>
               <button
                 type="button"
@@ -1520,7 +1706,24 @@ export function StudioLive({ onBack }: { onBack(): void }) {
                     </label>
                   </>
                 )}
+                {selected.kind === "screen" && (
+                  <>
+                    <small className="deck__hint">
+                      {selected.screen
+                        ? `${selected.screen.kind === "screen" ? "Screen" : "Window"}: ${selected.screen.name}`
+                        : "No screen chosen yet."}
+                    </small>
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={() => openPicker(selected.id)}
+                    >
+                      Change screen or window
+                    </button>
+                  </>
+                )}
                 {(selected.kind === "ps5" ||
+                  selected.kind === "screen" ||
                   selected.kind === "camera" ||
                   selected.kind === "image") && (
                   <label>
