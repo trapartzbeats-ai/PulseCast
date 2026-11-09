@@ -6,5 +6,4 @@
 *.json text eol=lf
 *.cpp text eol=lf
 *.hpp text eol=lf
-vendor/media/*.exe filter=lfs diff=lfs merge=lfs -text
 vendor/pulse-engine/*.tgz binary

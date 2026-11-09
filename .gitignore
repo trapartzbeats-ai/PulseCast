@@ -26,3 +26,7 @@ services/ps-source/bin/
 services/ps-source/ps5.cfg
 services/ps-source/*.cfg
 .claude/
+
+# ffmpeg binaries are large (and GPL): download them, see vendor/media/README.txt
+vendor/media/ffmpeg.exe
+vendor/media/ffprobe.exe
