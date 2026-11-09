@@ -1,0 +1,12 @@
+PulseCast Studio - PS5 Remote Play component notice
+
+bin/psrelay.exe is built on chiaki-ng (https://github.com/streetpea/chiaki-ng),
+a free Remote Play client licensed under the GNU AGPL-3.0. psrelay runs as its own
+program and talks to PulseCast over pipes. Its source (the psrelay folder in the
+PulseCast project, plus the unmodified chiaki-ng it builds against) is available
+from the PulseCast author on request, as the AGPL requires.
+
+bin/tempo-rtmp.exe is the author's own RTMP sender (no third-party GPL code).
+
+Your PS5 pairing file (ps5.cfg) is private to you. It is never part of the installer.
+Put it in the PulseCast data folder: %APPDATA%\pulsecast-studio\ps5.cfg

@@ -63,7 +63,8 @@
     "productName": "PulseCast Studio",
     "asar": true,
     "directories": {
-      "output": "release-reboot"
+      "output": "release-reboot",
+      "buildResources": "branding"
     },
     "extraResources": [
       {
@@ -78,8 +79,16 @@
         ]
       },
       {
-        "from": "build/media-host/Release/PulseCastMediaHost.exe",
-        "to": "media-host/PulseCastMediaHost.exe"
+        "from": "services/ps-source/bin",
+        "to": "ps-source/bin",
+        "filter": [
+          "psrelay.exe",
+          "tempo-rtmp.exe"
+        ]
+      },
+      {
+        "from": "services/ps-source/NOTICE.txt",
+        "to": "ps-source/NOTICE.txt"
       }
     ],
     "files": [
@@ -105,7 +114,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "branding/icon.ico"
     },
     "nsis": {
       "artifactName": "PulseCast-Studio-Setup-${version}-${arch}.${ext}",
@@ -117,7 +127,13 @@
       "createStartMenuShortcut": true,
       "shortcutName": "PulseCast Studio",
       "differentialPackage": false,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "branding/icon.ico",
+      "uninstallerIcon": "branding/icon.ico",
+      "installerHeaderIcon": "branding/icon.ico",
+      "installerHeader": "branding/installerHeader.bmp",
+      "installerSidebar": "branding/installerSidebar.bmp",
+      "uninstallerSidebar": "branding/uninstallerSidebar.bmp"
     },
     "portable": {
       "artifactName": "PulseCast-Studio-Portable-${version}-${arch}.${ext}",

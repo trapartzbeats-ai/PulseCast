@@ -66,11 +66,17 @@ export class Ps5Relay {
     return path.join(this.options.psDir, "bin");
   }
 
+  /** The pairing file: the user's data folder first (installed app), then next to bin/ (source checkout). */
+  private get cfg(): string {
+    const own = path.join(this.options.dataDir, "ps5.cfg");
+    return existsSync(own) ? own : path.join(this.options.psDir, "ps5.cfg");
+  }
+
   private missing(): string[] {
     const need: Array<[string, string]> = [
       [path.join(this.bin, "psrelay.exe"), "bin/psrelay.exe"],
       [path.join(this.bin, "tempo-rtmp.exe"), "bin/tempo-rtmp.exe"],
-      [path.join(this.options.psDir, "ps5.cfg"), "ps5.cfg (pair the PS5 first)"],
+      [this.cfg, `ps5.cfg (pair the PS5, then put it in ${this.options.dataDir})`],
     ];
     return need.filter(([file]) => !existsSync(file)).map(([, label]) => label);
   }
@@ -213,7 +219,7 @@ export class Ps5Relay {
       [
         "stream",
         "--config",
-        path.join(this.options.psDir, "ps5.cfg"),
+        this.cfg,
         "--res",
         String(request.res),
         "--fps",
