@@ -4,6 +4,15 @@ PulseCast Studio is a Windows-first live production application being rebuilt
 around one product guarantee: the exact Program picture and mix must be what
 gets recorded and routed to Twitch, Facebook, or both.
 
+## PS5 to Twitch / Facebook (Studio)
+
+The Studio screen streams a PS5 over Remote Play with no capture card: scenes,
+camera, microphone, screens and windows, Twitch and Facebook chat overlays and
+alerts, one H.264 encode on the PC. The PS5 helper (`services/ps-source`) is built
+on chiaki-ng (AGPL-3.0), see `services/ps-source/NOTICE.txt`. Your PS5 pairing
+file `ps5.cfg` is private and never part of the repository or the installer.
+Facebook chat setup: `docs/FACEBOOK_CHAT.md`.
+
 ## Current repository state
 
 This repository contains a retained Foundation control plane and bounded media
@@ -85,8 +94,10 @@ files, closes it, and confirms clean lock removal. The current package also
 contains `resources/media-host/PulseCastMediaHost.exe` and launches it as a
 supervised child of the Electron main process.
 
-The FFmpeg and ffprobe binaries in `vendor/media/` are tracked with Git LFS.
-They are GPL v3 builds and remain proof/transitional tooling, not the final
+The FFmpeg and ffprobe binaries in `vendor/media/` are not stored in this
+repository (they are about 200 MB): download a GPL v3 Windows build, put
+`ffmpeg.exe` and `ffprobe.exe` in `vendor/media/`, and check them against
+`SHA256SUMS` before building an installer. They are GPL v3 builds and remain proof/transitional tooling, not the final
 native Program data plane.
 
 ## Proof language
